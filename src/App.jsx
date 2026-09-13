@@ -142,8 +142,13 @@ export default function App() {
   }, []);
 
   // Keep alerts fresh for whatever zone is currently displayed, without the
-  // user needing to manually re-search. Uses the same cached path, so this
-  // is a no-op fetch-wise until the 5-minute alerts cache actually expires.
+  // user needing to manually re-search. Deliberately bypasses the TTL cache
+  // (skipCache: true below) rather than waiting for it to expire -- this is
+  // live weather data, so every tick genuinely hits the network. Note this
+  // interval (ALERTS_AUTO_REFRESH_MS) and the alerts cache TTL
+  // (ALERTS_CACHE_TTL_MS in lib/cache.js) are independently defined but
+  // currently equal; if either is ever tuned, check whether that's still
+  // the intended relationship.
   useEffect(() => {
     if (!result?.zone?.zoneId) return;
 
@@ -414,7 +419,9 @@ export default function App() {
               <h2 className="card-title">Current FRTCON</h2>
               <div className="frtcon-status-row">
                 <FrtconBadge level={frtcon.level} />
-                <span className="alert-tag">{result.alerts.length} active alerts</span>
+                <span className="alert-tag">
+                  {result.alerts.length} active alert{result.alerts.length === 1 ? "" : "s"}
+                </span>
               </div>
 
               <div className="frtcon-title-large">{frtcon.title}</div>
