@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { RECIPE } from "../data/recipe";
 import { useModalBehavior } from "../hooks/useModalBehavior";
 

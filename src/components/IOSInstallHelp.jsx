@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { useModalBehavior } from "../hooks/useModalBehavior";
 
 export function IOSInstallHelp({ open, onClose }) {

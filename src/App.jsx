@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./styles.css";
 import { isValidZip, getLatLonFromZip, getZoneByPoint, getActiveAlertsByZone, ALERTS_AUTO_REFRESH_MS } from "./lib/weatherApi";
 import { safeGetItem, safeSetItem } from "./lib/cache";

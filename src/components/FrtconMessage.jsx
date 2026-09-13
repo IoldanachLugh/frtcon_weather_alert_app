@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { alertMessages } from "../data/alertMessages";
 import { pickRandomItems } from "../lib/frtcon";
 
