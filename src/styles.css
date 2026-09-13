@@ -1,0 +1,546 @@
+/* ==========================================================================
+   Global page setup, animations, and print rules
+   (previously a template-string <style> tag injected by App.jsx)
+   ========================================================================== */
+
+html,
+body,
+#root {
+  background: #0b1f3a;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+@keyframes snowFall {
+  0% {
+    transform: translateY(-10px) translateX(0px);
+  }
+  50% {
+    transform: translateY(50vh) translateX(18px);
+  }
+  100% {
+    transform: translateY(100vh) translateX(-18px);
+  }
+}
+
+@media print {
+  .frtcon-app-root {
+    display: none !important;
+  }
+
+  .frtcon-recipe-overlay {
+    position: static !important;
+    inset: auto !important;
+    background: none !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .frtcon-recipe-card {
+    position: static !important;
+    max-width: none !important;
+    width: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+  }
+
+  .frtcon-recipe-card,
+  .frtcon-recipe-card * {
+    color: #000000 !important;
+  }
+
+  .frtcon-no-print {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   App shell
+   ========================================================================== */
+
+.app-page {
+  min-height: 100vh;
+  background: #0b1f3a;
+  color: #e5ecf5;
+  font-family: Arial, Helvetica, sans-serif;
+  padding: 24px;
+  box-sizing: border-box;
+  border: none;
+}
+
+.snow-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.app-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   Header + hamburger menu
+   ========================================================================== */
+
+.app-header {
+  background: #122b4dc0;
+  border: 1px solid #27466f;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.app-subtitle {
+  margin-top: 10px;
+  color: #c8d7ea;
+  font-size: 16px;
+}
+
+.menu-button-wrap {
+  position: relative;
+}
+
+.menu-button {
+  background: #0f2947;
+  border: 1px solid #27466f;
+  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.menu-icon {
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  background: #122b4d;
+  border: 1px solid #27466f;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 220px;
+  overflow: hidden;
+  z-index: 40;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #1c3a5f;
+  color: #dbe7f5;
+  padding: 14px 16px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Generic layout + card primitives, reused across sections
+   ========================================================================== */
+
+.section-stack {
+  display: block;
+}
+
+.section-spacing {
+  margin-bottom: 20px;
+}
+
+.card {
+  background: #122b4dc0;
+  border: 1px solid #27466f;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 22px;
+  color: #ffffff;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.body-text {
+  color: #dbe7f5;
+}
+
+/* ==========================================================================
+   Buttons + form controls (ZIP lookup)
+   ========================================================================== */
+
+.btn-primary {
+  background: #60a5fa;
+  color: #0b1f3a;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #dbeafe;
+  color: #0b1f3a;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.zip-input {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #5f7ea6;
+  background: #0f2543;
+  color: #ffffff;
+  font-size: 15px;
+  min-width: 180px;
+}
+
+.visually-hidden-label {
+  position: absolute;
+  left: -9999px;
+}
+
+.error-box {
+  background: #4c1d1d;
+  border: 1px solid #b91c1c;
+  border-radius: 14px;
+  padding: 14px;
+  color: #fecaca;
+  margin-top: 16px;
+}
+
+.status-box {
+  background: #16345c;
+  border: 1px solid #3b82f6;
+  border-radius: 14px;
+  padding: 14px;
+  color: #dbeafe;
+  margin-top: 16px;
+}
+
+/* ==========================================================================
+   FRTCON condition status (the "beige/amber" box with the FRTCON headline,
+   title, and randomized commentary lines)
+   ========================================================================== */
+
+.frtcon-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.frtcon-title-large {
+  margin-top: 16px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.frtcon-badge {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.frtcon-badge--level-1 {
+  background: #dc2626;
+  color: #ffffff;
+}
+.frtcon-badge--level-2 {
+  background: #f97316;
+  color: #ffffff;
+}
+.frtcon-badge--level-3 {
+  background: #facc15;
+  color: #111827;
+}
+.frtcon-badge--level-4 {
+  background: #38bdf8;
+  color: #111827;
+}
+.frtcon-badge--level-5 {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.alert-tag {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: bold;
+  font-size: 12px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.frtcon-matching-alerts {
+  margin-top: 16px;
+}
+
+.frtcon-matching-alerts-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+/* The beige/amber box containing the FRTCON headline, title, and randomized
+   commentary lines for the current condition level. */
+.frtcon-condition-status {
+  background: #fff7e6;
+  border: 1px solid #f59e0b;
+  border-radius: 16px;
+  padding: 18px;
+  color: #3f2b00;
+  margin-top: 18px;
+}
+
+.frtcon-condition-headline {
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.frtcon-condition-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.frtcon-condition-line {
+  margin-top: 0;
+}
+
+.frtcon-footnote {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Active Zone Alerts (raw NWS alert cards)
+   ========================================================================== */
+
+.active-alerts-heading {
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.nws-alert-card {
+  background: #122b4d;
+  border: 1px solid #27466f;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.nws-alert-header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.nws-alert-event-name {
+  margin: 0;
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.nws-alert-area-desc {
+  margin-top: 8px;
+  color: #c8d7ea;
+}
+
+.nws-alert-headline {
+  color: #dbe7f5;
+}
+
+.nws-alert-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+  color: #dbe7f5;
+}
+
+.nws-alert-description {
+  white-space: pre-line;
+  color: #dbe7f5;
+  margin-top: 12px;
+}
+
+/* ==========================================================================
+   Modals (recipe modal + iOS install-help modal)
+   ========================================================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 12, 26, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal-card {
+  background: #122b4d;
+  border: 1px solid #27466f;
+  border-radius: 18px;
+  padding: 24px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+.modal-card--narrow {
+  max-width: 380px;
+}
+
+.modal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modal-title {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-size: 22px;
+  color: #ffffff;
+}
+
+.modal-button-group {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  color: #c8d7ea;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.modal-print-button {
+  background: #dbeafe;
+  color: #0b1f3a;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.modal-list {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.modal-section {
+  margin-top: 12px;
+}
+
+.modal-section--spaced {
+  margin-top: 18px;
+}
+
+.modal-section-title {
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.modal-list-item {
+  color: #dbe7f5;
+  margin-bottom: 4px;
+}
+
+.modal-list-item--spaced {
+  color: #dbe7f5;
+  margin-bottom: 8px;
+}
+
+.modal-paragraph {
+  color: #dbe7f5;
+  margin-top: 12px;
+}
