@@ -2,9 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>French Toast Conditions</title>
+    <meta
+      name="description"
+      content="Check live NWS winter weather alerts for your location and see your French Toast Condition (FRTCON) — a tongue-in-cheek 5-level scale for whether it's a stay-home, make-French-toast kind of day."
+    />
+
+    <!-- Open Graph: baseline tags so shared links get a real title/description/
+         image instead of nothing. og:url is intentionally the production
+         root -- Open Graph tags are inherently absolute and don't have a
+         subpath-relative equivalent the way build assets do, so this is
+         only accurate when shared from the production site, not /dev/.
+         Revisit og:image with a dedicated 1200x630 share image (and
+         per-location previews) if/when the shelved server-rendered share
+         previews get built -- icon-512.png is a reasonable placeholder for
+         now, not the final answer. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="French Toast Conditions (FRTCON)" />
+    <meta
+      property="og:description"
+      content="Check live NWS winter weather alerts for your location and see your French Toast Condition — should you make French toast and stay home today?"
+    />
+    <meta property="og:image" content="https://frtcon.com/icon-512.png" />
+    <meta property="og:url" content="https://frtcon.com/" />
+
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0b1f3a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
