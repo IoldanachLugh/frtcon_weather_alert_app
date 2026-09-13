@@ -23,8 +23,6 @@ Live at [frtcon.com](https://frtcon.com).
 - Installable as a home-screen app on Android (via the in-app "Install App"
   menu item) and iOS (via a guided "Add to Home Screen" flow, since iOS has
   no programmatic install API).
-- Lets you share your current condition via the native share sheet on
-  mobile, or a Facebook link + clipboard-copy fallback on desktop.
 
 ### The FRTCON scale
 
@@ -69,7 +67,7 @@ src/
   components/
     SnowOverlay.jsx
     FrtconBadge.jsx
-    FrtconMessage.jsx          — the condition status box + share button
+    FrtconMessage.jsx          — the condition status box
     AlertCard.jsx
     RecipeModal.jsx
     IOSInstallHelp.jsx
@@ -140,13 +138,15 @@ be the right place to add proper NWS attribution.
   it won't appear instantly on first load even after deploying this).
 - On iOS, there is no way to trigger installation programmatically at
   all — the in-app menu instead shows manual "Add to Home Screen" steps.
-- Sharing a condition via Facebook on desktop can't carry the actual
-  condition text into the post (Facebook's share dialog only accepts a
-  URL) — the app copies the text to the clipboard as a workaround. Mobile
-  sharing via the native share sheet does carry real text through.
 
 ## Ideas for later (not yet built)
 
+- **Share button**: let visitors share their current FRTCON condition —
+  Web Share API on mobile (carries the actual condition text + a link),
+  with a fallback on desktop. Note going in: Facebook's `sharer.php` share
+  dialog only accepts a URL, not custom text/quote parameters, so a desktop
+  fallback can't post the actual condition text to Facebook directly — plan
+  on a plain link share plus a clipboard copy of the condition text instead.
 - **Server-rendered share previews**: accept ZIP/coordinates as URL
   parameters, render the initial page server-side with those inputs, and
   set Open Graph meta tags to match — so a shared link shows an accurate,

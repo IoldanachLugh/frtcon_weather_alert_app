@@ -105,10 +105,6 @@ infrastructure decisions.
   access to, rather than the intended one. If another domain/zone is ever
   added to this account or tunnel, re-run `tunnel login` and explicitly
   authorize the additional zone before routing hostnames in it.
-- **Facebook's `sharer.php` no longer accepts custom text/quote
-  parameters** — only a URL. Any "share the actual condition text" logic
-  has to go through the Web Share API (mobile) instead; desktop falls
-  back to a plain link share + clipboard copy.
 - A one-off layout report (iOS: right-side margin missing) turned out to
   be a **caching artifact**, not a real CSS bug — confirmed via incognito
   testing. Worth ruling out caching first for any "looks different on a
@@ -132,6 +128,13 @@ infrastructure decisions.
 
 ## Shelved for later (not started, but scoped)
 
+- **Share button.** Let visitors share their current FRTCON condition.
+  Agreed shape: Web Share API on mobile (carries the actual condition
+  text + a link), since Facebook's `sharer.php` share dialog only accepts
+  a URL and not custom text/quote parameters — so a desktop fallback
+  can't post the real condition text to Facebook directly; plan on a
+  plain link share plus a clipboard copy of the condition text instead.
+  Not yet implemented anywhere in the codebase.
 - **Server-rendered share previews.** Agreed shape: accept ZIP or
   coordinates as URL parameters, server-render the initial page using
   those inputs, and set Open Graph meta tags to match the resulting

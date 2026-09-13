@@ -14,6 +14,7 @@ export function classifyAlert(alert) {
     {
       level: 1,
       label: "FRTCON 1",
+      title: "Severe — stay inside, this is not a drill",
       reason: "Severe winter weather conditions are active.",
       match:
         combined.includes("blizzard warning") ||
@@ -24,6 +25,7 @@ export function classifyAlert(alert) {
     {
       level: 2,
       label: "FRTCON 2",
+      title: "Major weather warning active",
       reason: "A major winter weather warning is active.",
       match:
         combined.includes("winter storm warning") ||
@@ -37,6 +39,7 @@ export function classifyAlert(alert) {
     {
       level: 3,
       label: "FRTCON 3",
+      title: "Moderate impacts active",
       reason: "Moderate winter weather impacts are active.",
       match:
         combined.includes("winter weather advisory") ||
@@ -53,6 +56,7 @@ export function classifyAlert(alert) {
     {
       level: 4,
       label: "FRTCON 4",
+      title: "Being watched, no major impacts yet",
       reason: "Winter weather is being watched, but major impacts are not active yet.",
       match:
         combined.includes("winter storm watch") ||
@@ -101,7 +105,7 @@ export function determineFrtcon(alerts) {
   return {
     level: top.classification.level,
     label: top.classification.label,
-    title: top.classification.reason,
+    title: top.classification.title,
     reason: top.classification.reason,
     matchingAlerts: winterMatches,
   };

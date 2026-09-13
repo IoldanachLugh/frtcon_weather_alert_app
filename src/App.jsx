@@ -79,6 +79,14 @@ export default function App() {
   // eventual result/error is ignored instead of overwriting fresher state.
   const activeRequestRef = useRef(null);
 
+  // Separate guard for geolocation specifically: navigator.geolocation has
+  // no AbortController equivalent, so a slow GPS fix can still resolve well
+  // after the user has moved on to (and finished) a ZIP search. Every
+  // user-initiated lookup -- browser or ZIP -- bumps this counter; a
+  // geolocation callback only acts if its own sequence number is still the
+  // latest one, otherwise it's a stale result and gets silently dropped.
+  const requestSeqRef = useRef(0);
+
   const frtcon = useMemo(() => {
     return result?.alerts ? determineFrtcon(result.alerts) : null;
   }, [result]);
@@ -157,6 +165,12 @@ export default function App() {
     // to it instead of waiting for another button press.
     localStorage.setItem("frtcon_last_source", "browser");
 
+    // Claim this lookup's sequence number now, before the (unabortable)
+    // geolocation call even starts. If the user kicks off another lookup
+    // (browser or ZIP) before this one resolves, requestSeqRef will have
+    // moved on and the callbacks below will recognize themselves as stale.
+    const mySeq = ++requestSeqRef.current;
+
     if (!navigator.geolocation) {
       setStatusMessage("");
       setError("This browser does not support geolocation. Try entering a ZIP code.");
@@ -166,12 +180,14 @@ export default function App() {
     setLoading(true);
 
     const onSuccess = async (position) => {
+      if (mySeq !== requestSeqRef.current) return; // superseded by a newer lookup
       const lat = Number(position.coords.latitude.toFixed(4));
       const lon = Number(position.coords.longitude.toFixed(4));
       await runLookupFromCoordinates(lat, lon, "browser");
     };
 
     const onFinalError = (geoError) => {
+      if (mySeq !== requestSeqRef.current) return; // superseded by a newer lookup
       setLoading(false);
       setStatusMessage("");
 
@@ -190,6 +206,8 @@ export default function App() {
     navigator.geolocation.getCurrentPosition(
       onSuccess,
       (geoError) => {
+        if (mySeq !== requestSeqRef.current) return; // superseded by a newer lookup
+
         // A permission denial won't change on retry, so don't bother — go
         // straight to the actionable message instead of a pointless second
         // attempt (which would also flash a misleading "still locating"
@@ -221,6 +239,12 @@ export default function App() {
         return;
       }
 
+      // Bump the shared sequence counter so that a geolocation lookup still
+      // in flight (which can't be aborted the way a fetch can) recognizes
+      // itself as stale once it eventually resolves, instead of overwriting
+      // this ZIP search's result.
+      const mySeq = ++requestSeqRef.current;
+
       // Cancel any in-flight lookup before starting the ZIP resolution step,
       // so an older request can't overwrite this one once it's done.
       if (activeRequestRef.current) {
@@ -238,10 +262,10 @@ export default function App() {
         // straight to it instead of waiting for another button press.
         localStorage.setItem("frtcon_last_source", "zip");
         const location = await getLatLonFromZip(zipValue, { signal });
-        if (signal.aborted) return;
+        if (signal.aborted || mySeq !== requestSeqRef.current) return;
         await runLookupFromCoordinates(location.lat, location.lon, "zip");
       } catch (err) {
-        if (signal.aborted) return;
+        if (signal.aborted || mySeq !== requestSeqRef.current) return;
         setLoading(false);
         setResult(null);
         setStatusMessage("");
