@@ -90,22 +90,12 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
     return cached;
   }
 
-  const zoneLookup = await fetchJson(
-    `${WEATHER_GOV_BASE}/zones/forecast?point=${encodeURIComponent(`${lat},${lon}`)}`,
-    { signal }
-  );
-
-  const zoneFeature = zoneLookup?.features?.[0];
-  if (zoneFeature?.properties?.id) {
-    const value = {
-      zoneId: zoneFeature.properties.id,
-      zoneName: zoneFeature.properties.name || zoneFeature.properties.id,
-    };
-
-    setCacheItem(cacheKey, value);
-    return value;
-  }
-
+  // Documented path per NWS's own API docs: /points/{lat},{lon} resolves a
+  // coordinate to its forecast zone URL, then /zones/forecast/{zoneId}
+  // gets that zone's details. (An earlier version of this function tried
+  // an undocumented /zones/forecast?point= shortcut first, which wasn't in
+  // NWS's published spec and had no guaranteed behavior if NWS ever changed
+  // or removed it -- not worth the risk for saving one request.)
   const pointData = await fetchJson(`${WEATHER_GOV_BASE}/points/${lat},${lon}`, { signal });
   const zoneUrl = pointData?.properties?.forecastZone;
   const zoneId = extractZoneIdFromUrl(zoneUrl);
@@ -121,6 +111,8 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
     zoneName: zoneData?.properties?.name || zoneId,
   };
 
+  // Cached by rounded lat/lon (see makeZoneCacheKey) so a repeat visit from
+  // roughly the same spot skips both requests above entirely for an hour.
   setCacheItem(cacheKey, value);
   return value;
 }
