@@ -93,6 +93,49 @@ export default function App() {
   // latest one, otherwise it's a stale result and gets silently dropped.
   const requestSeqRef = useRef(0);
 
+  const menuButtonRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Keyboard support for the hamburger dropdown, matching what the modals
+  // already do: Escape closes it (and returns focus to the button that
+  // opened it), Up/Down arrows cycle focus between items, and opening the
+  // menu moves focus onto its first item for keyboard users.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const items = dropdownRef.current
+      ? Array.from(dropdownRef.current.querySelectorAll(".dropdown-item"))
+      : [];
+    items[0]?.focus();
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      event.preventDefault();
+
+      const currentItems = dropdownRef.current
+        ? Array.from(dropdownRef.current.querySelectorAll(".dropdown-item"))
+        : [];
+      if (currentItems.length === 0) return;
+
+      const currentIndex = currentItems.indexOf(document.activeElement);
+      const nextIndex =
+        event.key === "ArrowDown"
+          ? (currentIndex + 1) % currentItems.length
+          : (currentIndex - 1 + currentItems.length) % currentItems.length;
+
+      currentItems[nextIndex]?.focus();
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
   const frtcon = useMemo(() => {
     return result?.alerts ? determineFrtcon(result.alerts) : null;
   }, [result]);
@@ -325,6 +368,7 @@ export default function App() {
 
             <div className="menu-button-wrap">
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -339,7 +383,7 @@ export default function App() {
                   {/* Invisible click-catcher so tapping anywhere outside the
                       menu closes it, same pattern as the modal overlays. */}
                   <div onClick={() => setMenuOpen(false)} className="menu-backdrop" />
-                  <div className="dropdown-menu">
+                  <div ref={dropdownRef} className="dropdown-menu">
                     <button
                       type="button"
                       className="dropdown-item"

@@ -64,6 +64,9 @@ src/
   data/
     alertMessages.js          — the FRTCON 1–5 headline/title/commentary content
     recipe.js                 — Jeff's French Toast recipe content
+  hooks/
+    useModalBehavior.js       — shared modal a11y: focus trap, focus
+                                restore, body scroll lock, Escape-to-close
   components/
     SnowOverlay.jsx
     FrtconBadge.jsx

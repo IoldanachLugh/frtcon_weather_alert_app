@@ -1,23 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useRef } from "react";
 import { RECIPE } from "../data/recipe";
+import { useModalBehavior } from "../hooks/useModalBehavior";
 
 export function RecipeModal({ open, onClose }) {
-  useEffect(() => {
-    if (!open) return undefined;
-
-    function onKeyDown(event) {
-      if (event.key === "Escape") onClose();
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+  const cardRef = useRef(null);
+  useModalBehavior(open, onClose, cardRef);
 
   if (!open) return null;
 
   return (
     <div className="frtcon-recipe-overlay modal-overlay" onClick={onClose}>
       <div
+        ref={cardRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="recipe-modal-title"
