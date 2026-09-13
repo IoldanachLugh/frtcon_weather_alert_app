@@ -5,10 +5,31 @@
 
 export function classifyAlert(alert) {
   const p = alert?.properties ?? {};
+
+  // `event` is NOT free text -- NWS draws it from a fixed, published list
+  // of canonical alert-type strings (see api.weather.gov/alerts/types),
+  // e.g. "Winter Storm Warning", "Extreme Cold Warning". `headline` and
+  // `description` are the genuinely free-text narrative fields. Matching
+  // against `event` alone (rather than all three concatenated, as this
+  // function used to) avoids a real false-positive path: a Watch's
+  // description can legitimately contain the word "Warning" in a sentence
+  // like "a Winter Storm Warning may be issued if conditions worsen",
+  // which the old combined-string approach would have matched.
+  //
+  // Substring matching (rather than exact equality) is intentional and
+  // kept from before: individual NWS offices sometimes use regional
+  // variants of a base product name -- e.g. "Hard Freeze Warning" instead
+  // of "Freeze Warning" -- and a substring check against `event` alone
+  // still catches those, since the base phrase is still in there, without
+  // requiring an exhaustive hardcoded list of every regional variant.
   const event = (p.event || "").toLowerCase();
-  const headline = (p.headline || "").toLowerCase();
+
+  // The one exception: whether a Winter Storm Warning specifically
+  // involves "significant ice" isn't a distinct NWS event type or any
+  // other fixed field -- event stays "Winter Storm Warning" either way.
+  // That nuance only exists in the free-text description, so (and only
+  // for this one case) this still has to look there.
   const description = (p.description || "").toLowerCase();
-  const combined = `${event} ${headline} ${description}`;
 
   const checks = [
     {
@@ -17,10 +38,10 @@ export function classifyAlert(alert) {
       title: "Severe — stay inside, this is not a drill",
       reason: "Severe winter weather conditions are active.",
       match:
-        combined.includes("blizzard warning") ||
-        combined.includes("ice storm warning") ||
-        combined.includes("heavy freezing spray warning") ||
-        (combined.includes("winter storm warning") && combined.includes("significant ice")),
+        event.includes("blizzard warning") ||
+        event.includes("ice storm warning") ||
+        event.includes("heavy freezing spray warning") ||
+        (event.includes("winter storm warning") && description.includes("significant ice")),
     },
     {
       level: 2,
@@ -28,13 +49,13 @@ export function classifyAlert(alert) {
       title: "Major weather warning active",
       reason: "A major winter weather warning is active.",
       match:
-        combined.includes("winter storm warning") ||
-        combined.includes("lake effect snow warning") ||
-        combined.includes("snow squall warning") ||
-        combined.includes("freezing rain warning") ||
+        event.includes("winter storm warning") ||
+        event.includes("lake effect snow warning") ||
+        event.includes("snow squall warning") ||
+        event.includes("freezing rain warning") ||
         // Not a storm, but a genuine "stay inside" threshold (roughly -25°F
         // wind chill/air temp in most areas) — treated at Warning severity.
-        combined.includes("extreme cold warning"),
+        event.includes("extreme cold warning"),
     },
     {
       level: 3,
@@ -42,16 +63,16 @@ export function classifyAlert(alert) {
       title: "Moderate impacts active",
       reason: "Moderate winter weather impacts are active.",
       match:
-        combined.includes("winter weather advisory") ||
-        combined.includes("freezing fog advisory") ||
-        combined.includes("freezing rain advisory") ||
-        combined.includes("snow advisory") ||
-        combined.includes("blowing snow advisory") ||
+        event.includes("winter weather advisory") ||
+        event.includes("freezing fog advisory") ||
+        event.includes("freezing rain advisory") ||
+        event.includes("snow advisory") ||
+        event.includes("blowing snow advisory") ||
         // Advisory-tier cold hazards: significant but short of the
         // "stay inside" threshold, similar in spirit to a weather advisory.
-        combined.includes("cold weather advisory") ||
-        combined.includes("frost advisory") ||
-        combined.includes("freeze warning"),
+        event.includes("cold weather advisory") ||
+        event.includes("frost advisory") ||
+        event.includes("freeze warning"),
     },
     {
       level: 4,
@@ -59,13 +80,13 @@ export function classifyAlert(alert) {
       title: "Being watched, no major impacts yet",
       reason: "Winter weather is being watched, but major impacts are not active yet.",
       match:
-        combined.includes("winter storm watch") ||
-        combined.includes("blizzard watch") ||
-        combined.includes("lake effect snow watch") ||
-        combined.includes("ice storm watch") ||
-        combined.includes("extreme cold watch") ||
-        combined.includes("heavy freezing spray watch") ||
-        combined.includes("freeze watch"),
+        event.includes("winter storm watch") ||
+        event.includes("blizzard watch") ||
+        event.includes("lake effect snow watch") ||
+        event.includes("ice storm watch") ||
+        event.includes("extreme cold watch") ||
+        event.includes("heavy freezing spray watch") ||
+        event.includes("freeze watch"),
     },
   ];
 
