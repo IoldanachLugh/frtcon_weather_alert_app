@@ -74,7 +74,14 @@ infrastructure decisions.
   UI in the hamburger menu (Android gets a real install button via
   `beforeinstallprompt`; iOS gets manual "Add to Home Screen"
   instructions, since no programmatic install API exists on iOS/WebKit,
-  ever, at any effort level).
+  ever, at any effort level). The service worker registers at a path
+  relative to `import.meta.env.BASE_URL` (so it works whether the build
+  is in `public_html/dev` or promoted to the root), but `manifest.json`'s
+  `start_url` and `scope` are deliberately left hardcoded to `"/"` — a
+  JSON file has no build-time templating, so making those environment-
+  aware isn't worth it for a review-only instance. Practical effect:
+  install/PWA behavior can't be meaningfully tested from `/dev/`, only
+  from production.
 - The app auto-resumes a returning visitor's last-used lookup method
   (browser geolocation vs. ZIP) on load, tracked via a
   `frtcon_last_source` localStorage key.

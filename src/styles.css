@@ -73,6 +73,11 @@ body,
   padding: 24px;
   box-sizing: border-box;
   border: none;
+  /* Intentional: the app's general text/content is center-aligned. Stated
+     explicitly here rather than relying on the leftover Vite template rule
+     in index.css, which happens to set the same thing but for unrelated
+     reasons and could be cleaned out from under this later. */
+  text-align: center;
 }
 
 .snow-overlay {
@@ -106,10 +111,10 @@ body,
 }
 
 .header-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  position: relative;
+  /* Leave room on the right so centered title text doesn't run under the
+     absolutely-positioned menu button (44px button + 12px gap). */
+  padding-right: 56px;
 }
 
 .app-title {
@@ -126,7 +131,9 @@ body,
 }
 
 .menu-button-wrap {
-  position: relative;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
 .menu-button {
@@ -399,6 +406,12 @@ body,
   padding: 16px;
   margin-bottom: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Raw NWS alert content (event name, area description, headline, meta,
+     and especially the pre-formatted description text below) should read
+     left-to-right as issued, not inherit the app's general center
+     alignment -- centering multi-line government alert text makes it
+     hard to read and doesn't match how it's actually formatted upstream. */
+  text-align: left;
 }
 
 .nws-alert-header-row {

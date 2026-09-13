@@ -4,7 +4,7 @@ import { pickRandomItems } from "../lib/frtcon";
 
 export function FrtconMessage({ level, zoneName }) {
   const message = alertMessages[level] || alertMessages[5];
-  const selectedLines = useMemo(() => pickRandomItems(message.body, 4), [level, zoneName]);
+  const selectedLines = useMemo(() => pickRandomItems(message.body, 4), [message.body]);
 
   return (
     <div className="frtcon-condition-status">

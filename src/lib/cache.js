@@ -38,3 +38,26 @@ export function setCacheItem(key, value) {
 export function makeZoneCacheKey(lat, lon) {
   return `${ZONE_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
 }
+
+// For the handful of plain (non-TTL) localStorage reads/writes elsewhere in
+// the app -- e.g. remembering the last-used ZIP/lookup method -- that don't
+// go through getCacheItem/setCacheItem above. Touching localStorage at all
+// can throw (Safari with all cookies/site data blocked, some hardened
+// privacy extensions, certain embedded webviews), so every direct call site
+// needs the same try/catch treatment the TTL cache already has.
+export function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}

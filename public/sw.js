@@ -15,7 +15,7 @@
 // update showing up" PWA problem, since there's no cache lifecycle to get
 // stuck on in the first place.
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 

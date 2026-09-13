@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./styles.css";
 import { isValidZip, getLatLonFromZip, getZoneByPoint, getActiveAlertsByZone, ALERTS_AUTO_REFRESH_MS } from "./lib/weatherApi";
+import { safeGetItem, safeSetItem } from "./lib/cache";
 import { determineFrtcon } from "./lib/frtcon";
 import { SnowOverlay } from "./components/SnowOverlay";
 import { FrtconBadge } from "./components/FrtconBadge";
@@ -56,7 +57,12 @@ export default function App() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Base-relative rather than a hardcoded "/sw.js": that literal path
+      // only resolves correctly when the app is served from the domain
+      // root. import.meta.env.BASE_URL tracks whatever `base` vite.config.js
+      // is set to, so this keeps working whether the build lands in
+      // public_html/dev (for review) or gets promoted to public_html itself.
+      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
         // Non-fatal: the app works fine without it, it just won't be
         // installable from Chrome's own in-app menu item in that case.
       });
@@ -163,7 +169,7 @@ export default function App() {
     setStatusMessage("Locating you... this can take a few seconds.");
     // Remember which method was used so a return visit can skip straight
     // to it instead of waiting for another button press.
-    localStorage.setItem("frtcon_last_source", "browser");
+    safeSetItem("frtcon_last_source", "browser");
 
     // Claim this lookup's sequence number now, before the (unabortable)
     // geolocation call even starts. If the user kicks off another lookup
@@ -257,10 +263,10 @@ export default function App() {
       setLoading(true);
 
       try {
-        localStorage.setItem("frtcon_last_zip", zipValue);
+        safeSetItem("frtcon_last_zip", zipValue);
         // Remember which method was used so a return visit can skip
         // straight to it instead of waiting for another button press.
-        localStorage.setItem("frtcon_last_source", "zip");
+        safeSetItem("frtcon_last_source", "zip");
         const location = await getLatLonFromZip(zipValue, { signal });
         if (signal.aborted || mySeq !== requestSeqRef.current) return;
         await runLookupFromCoordinates(location.lat, location.lon, "zip");
@@ -287,12 +293,12 @@ export default function App() {
   // rather than making a returning visitor click a button again. Runs once
   // on mount only -- intentionally does not re-run on every render.
   useEffect(() => {
-    const savedZip = localStorage.getItem("frtcon_last_zip");
+    const savedZip = safeGetItem("frtcon_last_zip");
     if (savedZip && isValidZip(savedZip)) {
       setZip(savedZip);
     }
 
-    const savedSource = localStorage.getItem("frtcon_last_source");
+    const savedSource = safeGetItem("frtcon_last_source");
     if (savedSource === "browser") {
       handleUseBrowserLocation();
     } else if (savedSource === "zip" && savedZip && isValidZip(savedZip)) {
