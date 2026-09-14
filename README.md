@@ -34,12 +34,17 @@ Live at [frtcon.com](https://frtcon.com).
 | **4** | Being watched, no major impacts yet | Winter Storm/Blizzard/Lake Effect Snow/Ice Storm/Extreme Cold/Freeze Watch, Heavy Freezing Spray Watch, Frost Advisory, Freeze Warning |
 | **5** | All clear | No active alerts, or active alerts unrelated to winter weather |
 
-Classification is done via keyword matching against each alert's event type,
-headline, and description (see `src/lib/frtcon.js`) — not against NWS's
-structured VTEC codes — so it's possible for unusual alert wording to be
-missed. When multiple winter alerts are active at once, the **most severe**
-(lowest-numbered) level wins, but every matching alert is listed under
-"Winter alerts driving the score."
+Classification is done via keyword matching against each alert's `event`
+field (see `src/lib/frtcon.js`) — NWS draws `event` from a fixed, published
+list of alert-type strings rather than free text, so this is closer to
+matching a canonical code than parsing prose. The one exception: whether a
+Winter Storm Warning specifically involves "significant ice" isn't a
+distinct event type, so that one case also checks the alert's free-text
+`description`. This is still not NWS's structured VTEC codes, so it's
+possible for an unusual event string to be missed. When multiple winter
+alerts are active at once, the **most severe** (lowest-numbered) level
+wins, but every matching alert is listed under "Winter alerts driving the
+score."
 
 ## Tech stack
 
@@ -90,10 +95,12 @@ This app is served as static files (currently via Apache, behind a
 Cloudflare Tunnel). A few things beyond the built `dist/` output need to be
 in place for full functionality:
 
-- **PWA install support** requires `manifest.json`, `sw.js`, `icon-192.png`,
-  and `icon-512.png` to be present at the site root (i.e. copied into
-  `public/` so Vite includes them in the build), and the following added to
-  `index.html`'s `<head>`:
+- **PWA install support** relies on `manifest.json`, `sw.js`, `icon-192.png`,
+  and `icon-512.png` living in `public/` (so Vite includes them in the
+  build) and landing at the site root, plus these tags already present in
+  `index.html`'s `<head>` — listed here so anyone rebuilding `index.html`
+  from scratch knows they're required, not because they're currently
+  missing:
 
   ```html
   <link rel="manifest" href="/manifest.json" />
@@ -106,8 +113,14 @@ in place for full functionality:
   and always defers to the network. This is deliberate: FRTCON shows live
   alert data, so serving a stale cached response (even briefly, even
   offline) would be actively misleading rather than just inconvenient. Its
-  only job is satisfying Chrome's installability requirement (a registered
-  service worker with a fetch handler).
+  main job is satisfying Chrome's installability requirement (a registered
+  service worker with a fetch handler); it also catches a failed page
+  navigation (e.g. the network genuinely not being ready yet during an
+  Android cold start) and serves a small self-contained "Reconnecting…"
+  page that retries with backoff and then gives up with a manual Retry
+  button, rather than spinning forever or falling through to Chrome's own
+  blank-looking offline interstitial — see `public/sw.js` for the
+  retry/give-up logic.
 
 - **File permissions matter.** Static assets need to be world-readable by
   whatever user your web server runs as (e.g. `www-data`) — files left at

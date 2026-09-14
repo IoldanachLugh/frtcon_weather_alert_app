@@ -68,10 +68,10 @@ infrastructure decisions.
 - `lib/frtcon.js` (`classifyAlert`, `determineFrtcon`) is pure — no
   React/DOM dependency — specifically so it's straightforward to unit
   test later, even though no test suite exists yet.
-- PWA support exists: `manifest.json`, a deliberately-empty/no-cache
-  `sw.js` (network-first by design — this app shows live alert data, so
-  caching would be actively misleading, not just stale), and install-flow
-  UI in the hamburger menu (Android gets a real install button via
+- PWA support exists: `manifest.json`, a no-cache/network-first `sw.js`
+  (deliberate — this app shows live alert data, so caching would be
+  actively misleading, not just stale), and install-flow UI in the
+  hamburger menu (Android gets a real install button via
   `beforeinstallprompt`; iOS gets manual "Add to Home Screen"
   instructions, since no programmatic install API exists on iOS/WebKit,
   ever, at any effort level). The service worker registers at a path
@@ -81,10 +81,35 @@ infrastructure decisions.
   JSON file has no build-time templating, so making those environment-
   aware isn't worth it for a review-only instance. Practical effect:
   install/PWA behavior can't be meaningfully tested from `/dev/`, only
-  from production.
+  from production. `sw.js` also catches a failed page navigation (a bare
+  `fetch()` failure, notably during Android cold-start before the OS has
+  finished bringing the network stack back up) and serves a small
+  self-contained "Reconnecting…" page instead of falling through to
+  Chrome's own blank-looking offline interstitial — that page retries
+  with capped backoff, then gives up with a manual Retry button rather
+  than spinning forever on a real outage/airplane-mode; see `public/sw.js`
+  for the retry/give-up logic.
+- Active alerts are fetched by point (`/alerts/active?point={lat},{lon}`),
+  not by forecast zone (`/alerts/active/zone/{zoneId}`) — the zone
+  endpoint silently omits alerts issued by county or storm polygon (UGC
+  `xxCnnn`) rather than by forecast zone (UGC `xxZnnn`), which includes
+  some winter alert types the FRTCON scale relies on (e.g. Snow Squall
+  Warning). Confirmed against live NWS data during a 2026-09-14 review:
+  several currently-active county/polygon-coded alerts were present via
+  `?point=` and absent from the zone endpoint for the same coordinates.
+  `getZoneByPoint` (`/points/` → `/zones/forecast/{zoneId}`) is still
+  used, just only for the human-readable zone name shown in the UI, not
+  for filtering which alerts are shown.
 - The app auto-resumes a returning visitor's last-used lookup method
   (browser geolocation vs. ZIP) on load, tracked via a
-  `frtcon_last_source` localStorage key.
+  `frtcon_last_source` localStorage key — but that key (and
+  `frtcon_last_zip`) is only written once a lookup actually succeeds, and
+  the silent auto-resume is skipped entirely if
+  `navigator.permissions` reports geolocation as `denied`. (Earlier this
+  persisted before the lookup even ran, so a denied permission or a
+  nonexistent ZIP got "remembered" as the preferred method and silently
+  re-failed on every later visit — a manual click of "Use Browser
+  Location" is unaffected either way.)
 
 ## Known gotchas (things that already bit us once)
 

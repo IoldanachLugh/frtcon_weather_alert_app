@@ -292,7 +292,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   - both modals
   - recipe print preview
 
-### 10. README is out of date
+### 10. README is out of date — ✅ FIXED
 
 - `README.md:37-40` says classification matches event, headline, and
   description. Since `a2e3cd1` it matches `event` only, plus the description
@@ -301,6 +301,38 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   already in `index.html`.
 - `README.md:105-110` says the SW's only job is installability. It now also
   serves the reconnect fallback (#2).
+- **Done:** all three updated.
+  - The classification paragraph now describes the actual current
+    matching: primarily `event` (a fixed NWS-published string, not free
+    text), with the "significant ice" qualifier on Winter Storm Warning as
+    the one documented exception that still reads `description`.
+  - The PWA `<head>` tags block is reframed from "requires X to be added"
+    to "already present, listed here so anyone rebuilding `index.html`
+    from scratch knows they're required" -- same content, no longer reads
+    as an outstanding to-do.
+  - The service worker paragraph now covers both jobs: satisfying
+    Chrome's installability requirement, and (since #2) catching a failed
+    navigation and serving the backoff/give-up "Reconnecting…" page
+    instead of Chrome's own blank offline interstitial, with a pointer to
+    `public/sw.js` for the retry logic.
+  - Left the "Known limitations" → "No offline support" bullet as-is: it's
+    still accurate (no cached content or offline browsing, just a
+    retry-then-give-up page for a transient failure), so no change was
+    needed there.
+  - Other parts of the README not named in this item (e.g. no mention yet
+    of the friendlier error messages from #4, the visibility-refresh
+    timestamp from #3, or the FRTCON 4 move from #13) were left alone --
+    out of this item's stated scope; flag if a fuller pass is wanted.
+  - **Also updated `CONTEXT.md`** (per user, 2026-09-14), correcting the
+    same two stale spots there: the PWA bullet no longer calls `sw.js`
+    "deliberately-empty" and now describes the reconnect fallback (#2);
+    the auto-resume bullet now notes `frtcon_last_source`/
+    `frtcon_last_zip` are only written on success and that resume is
+    skipped when geolocation is known `denied` (#5). Also added one new
+    bullet (not a correction, a genuine addition) documenting the
+    zone-vs-point alerts decision from #1, since that's exactly the kind
+    of non-obvious "decision made and why" CONTEXT.md exists to capture
+    and nothing there mentioned it before.
 
 ### 11. No tests for the classification logic
 
