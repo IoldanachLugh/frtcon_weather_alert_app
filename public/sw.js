@@ -160,5 +160,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(fetch(event.request));
+  // Not a navigation -- JS/CSS/image/font requests and cross-origin API
+  // calls (NWS, zippopotam) all fall through here. Since this SW never
+  // caches or rewrites anything for these, routing them through
+  // respondWith(fetch(...)) would only add overhead for no behavior
+  // change: leaving the fetch handler installed (a no-op for these
+  // requests) still satisfies Chrome's installability requirement.
 });

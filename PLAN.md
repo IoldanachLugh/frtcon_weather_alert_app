@@ -360,7 +360,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
 
 ## P3 — Cleanup / hygiene
 
-### 8. Service worker proxies every subresource for no benefit
+### 8. Service worker proxies every subresource for no benefit — ✅ FIXED
 
 - **Where:** `public/sw.js:76`.
 - **Problem:** `event.respondWith(fetch(event.request))` routes all JS, CSS,
@@ -371,6 +371,26 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   unaffected.
 - **Verify:** Chrome DevTools → Application → Manifest shows no
   installability errors.
+- **Done:** implemented exactly as described -- the `fetch` handler's
+  non-navigation tail (previously `event.respondWith(fetch(event.request))`)
+  now just falls off the end of the handler with no `respondWith` call,
+  replaced by a comment explaining why (no caching/rewriting happens for
+  these requests, so routing them through the SW added a hop for no
+  behavior change; leaving the handler installed at all is what
+  installability actually requires).
+  - **Verified live in a real browser.** Registered the SW fresh (explicit
+    `unregister()` + reload, rather than relying on whatever was already
+    cached from earlier testing sessions), confirmed it reached
+    `activated` and was controlling the page, then fetched the *running*
+    worker's own `scriptURL` and confirmed its live source both contains
+    the new explanatory comment and no longer contains
+    `event.respondWith(fetch(event.request))` -- i.e. this wasn't just
+    "the file on disk changed," the deployed worker is actually running
+    the new code. All 29 page-load subresource requests (JS modules,
+    CSS, manifest, icons) still returned 200 as normal. `beforeinstallprompt`
+    still fires with this change (confirmed via the "Install App" menu
+    item still appearing), which is the one behavior this fix must not
+    break. `npm run lint` and `vite build` both pass.
 
 ### 9. Leftover Vite starter CSS in `src/index.css`
 
