@@ -2,9 +2,9 @@ import { useRef } from "react";
 import { RECIPE } from "../data/recipe";
 import { useModalBehavior } from "../hooks/useModalBehavior";
 
-export function RecipeModal({ open, onClose }) {
+export function RecipeModal({ open, onClose, returnFocusRef }) {
   const cardRef = useRef(null);
-  useModalBehavior(open, onClose, cardRef);
+  useModalBehavior(open, onClose, cardRef, returnFocusRef);
 
   if (!open) return null;
 

@@ -226,7 +226,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     "Locating you..." right before failing again. `npm run lint` and
     `vite build` both pass.
 
-### 6. Focus isn't restored after closing a modal opened from the menu
+### 6. Focus isn't restored after closing a modal opened from the menu — ✅ FIXED
 
 - **Where:** `src/hooks/useModalBehavior.js:44`, `:81`;
   `src/App.jsx:390-393`, `:408-411`.
@@ -240,6 +240,37 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   Use it when the previously focused element is missing or
   `!el.isConnected`. Pass `menuButtonRef` from `App` to `RecipeModal` and
   `IOSInstallHelp`.
+- **Done:** implemented largely as described, with one correction found
+  during verification (see below).
+  - `useModalBehavior` (`src/hooks/useModalBehavior.js`) now takes an
+    optional fourth argument `returnFocusRef`. On close, it uses
+    `previouslyFocusedRef.current` if that element is a real previous
+    focus target, otherwise falls back to `returnFocusRef.current`.
+  - **Correction to the planned fix:** `!el.isConnected` alone isn't
+    enough to detect the "trigger unmounted" case, because
+    `document.activeElement` never becomes `null`/disconnected on its
+    own -- it falls back to `document.body`, which is always
+    `.isConnected`. Checking only `isConnected` would never actually
+    reach the fallback. The condition also excludes
+    `previouslyFocused === document.body` specifically, so a "focus
+    reverted to body" capture is treated the same as a missing one.
+  - `RecipeModal` and `IOSInstallHelp` both now accept and forward a
+    `returnFocusRef` prop to the hook; `App.jsx` passes its existing
+    `menuButtonRef` to both.
+  - **Verified live** in Chrome via `npm run dev` + browser automation
+    (a real interactive browser was available this session, unlike #3/#5's
+    sandbox): opened the French Toast Recipe modal from the hamburger
+    menu (which unmounts the dropdown item on click, reproducing the bug
+    scenario), confirmed focus lands inside the modal, then confirmed
+    focus returns to the menu button -- not `<body>` -- both via Escape
+    and via the modal's own Close button. Re-confirmed the fallback
+    branch is actually what's firing (not passing for an unrelated
+    reason) by checking `previouslyFocusedRef.current` was genuinely
+    `document.body` at close time in this scenario. `IOSInstallHelp`
+    wasn't exercised live (this browser's UA isn't iOS, so that menu item
+    never renders), but it shares the identical hook call and prop wiring
+    as `RecipeModal`, which was verified. `npm run lint` and `vite build`
+    both pass.
 
 ### 7. iPad never sees "Add to Home Screen"
 

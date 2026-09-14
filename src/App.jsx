@@ -510,7 +510,11 @@ export default function App() {
           </div>
         </div>
 
-        <IOSInstallHelp open={iosHelpOpen} onClose={() => setIosHelpOpen(false)} />
+        <IOSInstallHelp
+          open={iosHelpOpen}
+          onClose={() => setIosHelpOpen(false)}
+          returnFocusRef={menuButtonRef}
+        />
 
         <div className="card section-spacing">
           <h2 className="card-title">Lookup a Location</h2>
@@ -593,7 +597,11 @@ export default function App() {
       </div>
     </div>
 
-    <RecipeModal open={recipeOpen} onClose={() => setRecipeOpen(false)} />
+    <RecipeModal
+      open={recipeOpen}
+      onClose={() => setRecipeOpen(false)}
+      returnFocusRef={menuButtonRef}
+    />
     </>
   );
 }

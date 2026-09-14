@@ -25,7 +25,13 @@ function getFocusable(container) {
 // `containerRef` should point at the dialog element itself (the card, not
 // the overlay), so the focus trap only cycles through visible dialog
 // content.
-export function useModalBehavior(open, onClose, containerRef) {
+//
+// `returnFocusRef`, if given, is used as a fallback for where to send focus
+// on close when the element that had focus when the modal opened is gone by
+// then -- e.g. a menu item that closes its menu (unmounting itself) in the
+// same click handler that opens the modal, so `document.activeElement` is
+// already `<body>` before this hook's effect ever runs.
+export function useModalBehavior(open, onClose, containerRef, returnFocusRef) {
   const previouslyFocusedRef = useRef(null);
 
   // Read the latest onClose via a ref rather than putting it in the effect's
@@ -78,11 +84,27 @@ export function useModalBehavior(open, onClose, containerRef) {
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
-      previouslyFocusedRef.current?.focus?.();
+
+      const previouslyFocused = previouslyFocusedRef.current;
+      // document.body is always .isConnected, so it doesn't tell us
+      // anything on its own -- but it's also what document.activeElement
+      // falls back to when nothing else is focused, which is exactly what
+      // happens when the trigger (e.g. a menu item) unmounts itself in the
+      // same click handler that opens the modal. Treat that case the same
+      // as a disconnected element: neither is a real "what to return to".
+      const isRealPreviousFocus =
+        previouslyFocused?.isConnected && previouslyFocused !== document.body;
+      // returnFocusRef points at a long-lived element (e.g. the menu
+      // button), not one this effect owns, so reading .current here at
+      // cleanup time -- rather than a value captured back at mount --
+      // is what we actually want.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const target = isRealPreviousFocus ? previouslyFocused : returnFocusRef?.current;
+      target?.focus?.();
     };
-    // containerRef is a stable ref object and onClose is handled via
-    // onCloseRef above (see comment there) -- open is the only real
-    // dependency this effect should re-run on.
+    // containerRef and returnFocusRef are stable ref objects and onClose is
+    // handled via onCloseRef above (see comment there) -- open is the only
+    // real dependency this effect should re-run on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 }

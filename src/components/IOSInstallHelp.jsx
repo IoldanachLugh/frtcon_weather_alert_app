@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { useModalBehavior } from "../hooks/useModalBehavior";
 
-export function IOSInstallHelp({ open, onClose }) {
+export function IOSInstallHelp({ open, onClose, returnFocusRef }) {
   const cardRef = useRef(null);
-  useModalBehavior(open, onClose, cardRef);
+  useModalBehavior(open, onClose, cardRef, returnFocusRef);
 
   if (!open) return null;
 
