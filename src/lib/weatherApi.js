@@ -34,6 +34,22 @@ export function extractZoneIdFromUrl(url) {
   return parts[parts.length - 1] || null;
 }
 
+// Carries the technical detail (status code, URL, whether it was a timeout)
+// separately from the message shown to the user -- fetchJson itself has no
+// idea what a failure should say to a person, since that depends on which
+// lookup was in flight (a 404 means something different for a ZIP lookup
+// than for a coordinate lookup). See friendlyMessage() below, which is
+// where that detail gets translated, one call site at a time.
+export class HttpError extends Error {
+  constructor(message, { status, url, timeout = false } = {}) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+    this.url = url;
+    this.timeout = timeout;
+  }
+}
+
 export async function fetchJson(url, { signal } = {}) {
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => timeoutController.abort(), FETCH_TIMEOUT_MS);
@@ -55,13 +71,13 @@ export async function fetchJson(url, { signal } = {}) {
     });
 
     if (!response.ok) {
-      throw new Error(`Request failed (${response.status}) for ${url}`);
+      throw new HttpError(`Request failed (${response.status}) for ${url}`, { status: response.status, url });
     }
 
     return await response.json();
   } catch (err) {
     if (timeoutController.signal.aborted && !(signal && signal.aborted)) {
-      throw new Error(`Request timed out for ${url}`);
+      throw new HttpError(`Request timed out for ${url}`, { url, timeout: true });
     }
     throw err;
   } finally {
@@ -70,17 +86,47 @@ export async function fetchJson(url, { signal } = {}) {
   }
 }
 
+// Turns a raw HttpError into copy a person can actually act on -- never a
+// URL, a status code, or the word "fetch". The technical detail isn't
+// thrown away, just moved: it still goes to the console for whoever's
+// debugging, it's just not what ends up in the app's error box.
+// `notFoundMessage` is optional -- only some call sites have something
+// specific to say about a 404; everything else (5xx, other 4xx, timeouts)
+// falls back to the same generic "try again" message regardless of source.
+// Returns null for anything that isn't an HttpError, so the caller knows to
+// fall back to its own handling instead.
+function friendlyMessage(err, notFoundMessage) {
+  if (!(err instanceof HttpError)) return null;
+
+  console.error(err.timeout ? `Request timed out for ${err.url}` : `Request failed (${err.status}) for ${err.url}`);
+
+  if (err.status === 404 && notFoundMessage) {
+    return notFoundMessage;
+  }
+  return "The weather service isn't responding right now. Try again in a minute.";
+}
+
 export async function getLatLonFromZip(zip, { signal } = {}) {
   const cached = getCacheItem(`${ZIP_CACHE_PREFIX}${zip}`);
   if (cached) {
     return cached;
   }
 
-  const data = await fetchJson(`${ZIP_API_BASE}/${zip}`, { signal });
+  let data;
+  try {
+    data = await fetchJson(`${ZIP_API_BASE}/${zip}`, { signal });
+  } catch (err) {
+    const message = friendlyMessage(err, "We couldn't find that ZIP code.");
+    throw message ? new Error(message) : err;
+  }
   const place = data?.places?.[0];
 
   if (!place) {
-    throw new Error("ZIP code lookup did not return a location.");
+    // Same "not found" case as the 404 above, just discovered a different
+    // way -- zippopotam.us returns 200 with an empty places array for some
+    // malformed-but-numeric inputs instead of 404ing. Same user-facing
+    // message either way.
+    throw new Error("We couldn't find that ZIP code.");
   }
 
   const value = {
@@ -105,7 +151,13 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
   // an undocumented /zones/forecast?point= shortcut first, which wasn't in
   // NWS's published spec and had no guaranteed behavior if NWS ever changed
   // or removed it -- not worth the risk for saving one request.)
-  const pointData = await fetchJson(`${WEATHER_GOV_BASE}/points/${lat},${lon}`, { signal });
+  let pointData;
+  try {
+    pointData = await fetchJson(`${WEATHER_GOV_BASE}/points/${lat},${lon}`, { signal });
+  } catch (err) {
+    const message = friendlyMessage(err, "This location isn't covered by the National Weather Service.");
+    throw message ? new Error(message) : err;
+  }
   const zoneUrl = pointData?.properties?.forecastZone;
   const zoneId = extractZoneIdFromUrl(zoneUrl);
 
@@ -113,7 +165,17 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
     throw new Error("Could not determine the NWS forecast zone for this location.");
   }
 
-  const zoneData = await fetchJson(`${WEATHER_GOV_BASE}/zones/forecast/${zoneId}`, { signal });
+  let zoneData;
+  try {
+    zoneData = await fetchJson(`${WEATHER_GOV_BASE}/zones/forecast/${zoneId}`, { signal });
+  } catch (err) {
+    // No notFoundMessage here: a 404 at this step would be unexpected (the
+    // zoneId just came from a successful /points/ response, not user
+    // input), so it isn't a distinct "not covered" case -- just falls
+    // through to the generic message like any other failure.
+    const message = friendlyMessage(err);
+    throw message ? new Error(message) : err;
+  }
 
   const value = {
     zoneId,
@@ -145,10 +207,13 @@ export async function getActiveAlertsByPoint(lat, lon, { signal, skipCache = fal
     }
   }
 
-  const data = await fetchJson(
-    `${WEATHER_GOV_BASE}/alerts/active?point=${lat},${lon}&status=actual`,
-    { signal }
-  );
+  let data;
+  try {
+    data = await fetchJson(`${WEATHER_GOV_BASE}/alerts/active?point=${lat},${lon}&status=actual`, { signal });
+  } catch (err) {
+    const message = friendlyMessage(err);
+    throw message ? new Error(message) : err;
+  }
   const value = data?.features || [];
 
   setCacheItem(cacheKey, value);

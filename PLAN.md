@@ -124,7 +124,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     timestamp) is still worth doing before considering this fully
     confirmed.
 
-### 4. Raw technical error messages shown to users
+### 4. Raw technical error messages shown to users — ✅ FIXED
 
 - **Where:** `src/lib/weatherApi.js:48-56` builds messages like
   `Request failed (404) for https://api.zippopotam.us/us/00000`, rendered
@@ -143,6 +143,44 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     - anything else → "The weather service isn't responding right now. Try
       again in a minute."
   - Keep the URL and status in `console.error` for debugging.
+- **Done:** implemented as described in `src/lib/weatherApi.js`.
+  - Added `export class HttpError extends Error` (carries `status`, `url`,
+    `timeout`), thrown by `fetchJson` instead of a plain `Error` for both
+    a non-ok response and the existing timeout path.
+  - Added a private `friendlyMessage(err, notFoundMessage)` helper: logs
+    the technical detail to `console.error`, returns `notFoundMessage` for
+    a 404 if one was given, otherwise the generic "The weather service
+    isn't responding right now. Try again in a minute." for anything else
+    (5xx, other 4xx, timeouts). Returns `null` for a non-`HttpError` (e.g.
+    an `AbortError` from a superseded request), so the caller re-throws it
+    unchanged rather than papering over it.
+  - Wired in at all three call sites: `getLatLonFromZip` (404 → "We
+    couldn't find that ZIP code.", and reworded the pre-existing
+    empty-`places` case to the same text for consistency, since it's the
+    same failure discovered a different way), `getZoneByPoint`'s
+    `/points/` call (404 → "This location isn't covered by the National
+    Weather Service."; its second call to `/zones/forecast/{zoneId}` has
+    no 404-specific text since an unexpected 404 there isn't a "not
+    covered" case), and `getActiveAlertsByPoint` (generic fallback only).
+  - `App.jsx` needed no changes -- it already just renders `err.message`,
+    which is now friendly text instead of the raw technical string.
+  - **Verified** against real and simulated failures (Node, `libcopy` of
+    the two files with a fixed relative-import extension so plain `node`
+    could load them): nonexistent ZIP `00000` → "We couldn't find that ZIP
+    code."; a real coordinate outside NWS coverage (London, UK) → "This
+    location isn't covered by the National Weather Service."; a mocked
+    zippopotam 500 → the generic fallback; a forced 10s timeout → the
+    generic fallback. A real, working ZIP (55771) still succeeds
+    unaffected. In every failing case the raw `Request failed (…) for
+    https://…` / `Request timed out for https://…` string was confirmed
+    going to `console.error`, not to the thrown message. `npm run lint`
+    and `vite build` both pass.
+  - **Out of scope, not changed:** a raw network failure with no HTTP
+    response at all (e.g. `TypeError: Failed to fetch` from being
+    offline, DNS failure, or a CORS rejection) isn't an `HttpError`, so
+    `friendlyMessage` returns `null` for it and the browser's own message
+    still reaches the user unwrapped. Not one of the four cases named in
+    this item; flagging in case it's worth a follow-up.
 
 ### 5. Failed lookups are remembered and auto-retried on every visit
 
