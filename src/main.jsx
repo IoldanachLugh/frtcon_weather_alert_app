@@ -3,6 +3,18 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
+// The service worker's offline fallback page (public/sw.js) tracks its
+// reload attempts in sessionStorage so a capped backoff survives the
+// reloads it's causing. Reaching this line means a real page load just
+// succeeded, so that count is stale -- clear it now rather than letting it
+// carry over and make an unrelated later failure back off faster than it
+// should.
+try {
+  sessionStorage.removeItem('frtcon_reconnect_attempts')
+} catch {
+  // Ignore storage failures (see lib/cache.js for why this can throw).
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

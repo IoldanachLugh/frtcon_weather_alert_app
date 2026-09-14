@@ -40,6 +40,23 @@ self.addEventListener("fetch", (event) => {
   // back a minimal self-contained page that auto-retries instead -- this
   // doesn't cache or serve stale content, it just retries the same live
   // request a moment later once the network has actually come up.
+  //
+  // That auto-retry is capped, not unconditional: a brief hiccup during
+  // Android cold-start is the case this is built for, but the same catch
+  // fires just as readily for airplane mode, no signal, a real site/DNS
+  // outage, or a captive portal -- none of which resolve themselves in a
+  // second or two. Retrying forever in those cases just spins the battery
+  // on a screen that looks like it's about to load. So this backs off
+  // (1.5s, 3s, 6s, 6s) across a handful of attempts, tracked in
+  // sessionStorage so the count survives the reloads it's causing, then
+  // gives up and shows a plain "can't reach it" message with a manual
+  // Retry button -- restarting the same backoff from scratch, since a
+  // deliberate retry means the user believes something changed. The
+  // 'online' event (fired the instant the OS reports connectivity
+  // restored, e.g. leaving airplane mode) also triggers an immediate
+  // reload/reset rather than waiting out whatever backoff step is queued.
+  // The counter itself is cleared on a genuinely successful app load (see
+  // main.jsx) so it never carries over into an unrelated later failure.
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(
@@ -59,11 +76,81 @@ self.addEventListener("fetch", (event) => {
         background: #0b1f3a; color: #e5ecf5;
         font-family: Arial, Helvetica, sans-serif; text-align: center;
       }
+      p { max-width: 320px; }
+      button {
+        margin-top: 16px; display: none;
+        background: #60a5fa; color: #0b1f3a; border: none;
+        border-radius: 12px; padding: 12px 18px;
+        font-size: 15px; font-weight: bold; cursor: pointer;
+      }
     </style>
   </head>
   <body>
-    <p>Reconnecting&hellip;</p>
-    <script>setTimeout(function () { location.reload(); }, 1500);</script>
+    <div>
+      <p id="frtcon-reconnect-text">Reconnecting&hellip;</p>
+      <button id="frtcon-reconnect-retry" type="button">Retry</button>
+    </div>
+    <script>
+      (function () {
+        var STORAGE_KEY = "frtcon_reconnect_attempts";
+        var MAX_ATTEMPTS = 4;
+        var RETRY_DELAYS_MS = [1500, 3000, 6000, 6000];
+
+        function getAttempts() {
+          try {
+            return Number(sessionStorage.getItem(STORAGE_KEY)) || 0;
+          } catch (err) {
+            return 0;
+          }
+        }
+        function setAttempts(count) {
+          try {
+            sessionStorage.setItem(STORAGE_KEY, String(count));
+          } catch (err) {
+            // Ignore storage failures -- worst case, backoff restarts at 0.
+          }
+        }
+
+        var textEl = document.getElementById("frtcon-reconnect-text");
+        var retryButton = document.getElementById("frtcon-reconnect-retry");
+
+        function giveUp(message) {
+          setAttempts(0);
+          textEl.textContent = message;
+          retryButton.style.display = "inline-block";
+        }
+
+        retryButton.addEventListener("click", function () {
+          setAttempts(0);
+          location.reload();
+        });
+
+        // Fires the instant the OS reports connectivity restored (e.g.
+        // leaving airplane mode) -- reload right away instead of waiting
+        // out whatever backoff step happened to be queued.
+        window.addEventListener("online", function () {
+          setAttempts(0);
+          location.reload();
+        });
+
+        if (navigator.onLine === false) {
+          // Definitely offline right now -- retrying on a timer would just
+          // burn the attempt budget for nothing. Wait for the 'online'
+          // listener above; the Retry button still lets the user force
+          // an attempt sooner (e.g. if navigator.onLine is wrong).
+          giveUp("You're offline. This will reload automatically once you're back online.");
+        } else {
+          var attempts = getAttempts();
+          if (attempts >= MAX_ATTEMPTS) {
+            giveUp("Can't reach FRTCON right now. Check your connection and try again.");
+          } else {
+            setAttempts(attempts + 1);
+            var delay = RETRY_DELAYS_MS[Math.min(attempts, RETRY_DELAYS_MS.length - 1)];
+            setTimeout(function () { location.reload(); }, delay);
+          }
+        }
+      })();
+    </script>
   </body>
 </html>`,
             { status: 200, headers: { "Content-Type": "text/html" } }

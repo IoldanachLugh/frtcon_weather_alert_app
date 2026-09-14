@@ -47,7 +47,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   alerts, the new point-based query returned 1 (the warning). `npm run
   lint` and `vite build` both pass.
 
-### 2. Offline fallback page reloads forever
+### 2. Offline fallback page reloads forever — ✅ FIXED
 
 - **Where:** `public/sw.js:43-73` (reload at `:66`).
 - **Problem:** any failed navigation shows "Reconnecting…" and reloads every
@@ -68,6 +68,19 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   show the offline message after a few tries. Restore the network, tap
   Retry, and the app should load. Remember the SW update caveat in
   CONTEXT.md: reinstall the PWA to be sure the new `sw.js` is active.
+- **Done:** implemented as described (attempt counter + [1.5s, 3s, 6s, 6s]
+  backoff in `sessionStorage`, give-up message with a Retry button after 4
+  attempts, immediate offline message when `navigator.onLine === false`,
+  reset-and-reload on the `online` event, counter cleared on a successful
+  app load in `src/main.jsx`). Verified by extracting the fallback page's
+  inline script and running it in Node against mocked
+  `sessionStorage`/`navigator`/`location`/`setTimeout`: confirmed the
+  backoff delays escalate correctly, give-up fires and resets the counter
+  at attempt 4, the offline path gives up immediately with distinct
+  copy, and both the Retry button and the `online` event reset the counter
+  and reload. `npm run lint` and `vite build` both pass. Not yet verified
+  in an actual installed PWA under airplane mode (needs a device;
+  recommend a manual check before relying on it in production).
 
 ---
 
