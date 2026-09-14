@@ -33,9 +33,16 @@ export default function App() {
   // iOS never fires beforeinstallprompt and never will (no such API exists
   // in WebKit) -- this is a one-time UA check, not something that changes
   // at runtime, so no need to re-derive it on every render.
+  //
+  // iPadOS 13+ Safari reports a plain "Macintosh" user agent (no "iPad"),
+  // indistinguishable from a real Mac by UA string alone -- so the
+  // iPad|iPhone|iPod regex is paired with a touch-points check, since a
+  // real Mac laptop/desktop has no touchscreen but an iPad always reports
+  // maxTouchPoints > 1.
   const isIOS = useMemo(() => {
     if (typeof navigator === "undefined") return false;
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const ua = navigator.userAgent;
+    return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   }, []);
 
   useEffect(() => {

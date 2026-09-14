@@ -320,7 +320,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     as `RecipeModal`, which was verified. `npm run lint` and `vite build`
     both pass.
 
-### 7. iPad never sees "Add to Home Screen"
+### 7. iPad never sees "Add to Home Screen" — ✅ FIXED
 
 - **Where:** `src/App.jsx:29-32`.
 - **Problem:** iPadOS 13+ Safari reports a Macintosh user agent, so the
@@ -332,6 +332,29 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
 - **Related:** `src/components/IOSInstallHelp.jsx:34` says "in Safari's
   toolbar". Since iOS 16.4, other iOS browsers also offer Add to Home
   Screen from their share menus, so make the wording browser-neutral.
+- **Done:** implemented exactly as described in `src/App.jsx`'s `isIOS`
+  memo, plus the `IOSInstallHelp.jsx` wording change ("in Safari's
+  toolbar" → "in your browser's toolbar").
+  - **Verified live in a real browser.** `isIOS` is computed once via
+    `useMemo` on mount, so testing different UAs needed intercepting
+    `navigator.userAgent`/`navigator.maxTouchPoints` before React's first
+    render -- same timing constraint as #5's Permissions-API check. Used
+    the same technique: a temporary shim `<script>` added to the top of
+    `index.html` (before the app's own `<script type="module">`),
+    reverted immediately after each check (confirmed clean via `git diff
+    --stat index.html`, plus a re-run of lint/build).
+  - A real iPad UA (`Macintosh...Safari/605.1.15`, the exact string
+    iPadOS 13+ Safari sends, with `maxTouchPoints: 5`) → the hamburger
+    menu now shows "Add to Home Screen", which is what this fix exists
+    to make true (the old `/iPad|iPhone|iPod/`-only regex, with no
+    `Macintosh`+touch-points branch, would never match this UA).
+  - Control: the same UA string with `maxTouchPoints: 0` (a real Mac
+    desktop/laptop, no touchscreen) → the item stays absent, so the fix
+    doesn't false-positive on real Macs.
+  - Regression check: a real iPhone UA (`iPhone...Mobile/15E148`) still
+    triggers it, and its modal shows the updated "in your browser's
+    toolbar" wording.
+  - `npm run lint` and `vite build` both pass.
 
 ---
 

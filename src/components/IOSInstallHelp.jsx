@@ -31,7 +31,7 @@ export function IOSInstallHelp({ open, onClose, returnFocusRef }) {
         </p>
         <ol className="modal-list modal-section">
           <li className="modal-list-item--spaced">
-            Tap the Share icon (the square with an arrow pointing up) in Safari's toolbar.
+            Tap the Share icon (the square with an arrow pointing up) in your browser's toolbar.
           </li>
           <li className="modal-list-item--spaced">
             Scroll down and tap <strong>Add to Home Screen</strong>.
