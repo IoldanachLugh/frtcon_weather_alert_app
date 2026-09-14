@@ -392,7 +392,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     item still appearing), which is the one behavior this fix must not
     break. `npm run lint` and `vite build` both pass.
 
-### 9. Leftover Vite starter CSS in `src/index.css`
+### 9. Leftover Vite starter CSS in `src/index.css` — ✅ FIXED
 
 - **Problem:** the whole file is the create-vite template stylesheet and
   still applies:
@@ -413,6 +413,108 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   - desktop and phone widths
   - both modals
   - recipe print preview
+- **Done:** deleted `src/index.css` and its import in `src/main.jsx`. Traced
+  every rule in the deleted file against the actual component tree (not
+  just the two the item called out) before moving anything, since a
+  "leftover template" rule can still be silently load-bearing:
+  - **Moved into `styles.css`** (genuinely relied on):
+    - `div[role="dialog"] { text-align: left; }` -- as the item flagged.
+      Real dependency: `IOSInstallHelp`'s modal is nested inside
+      `.app-page` (which centers all text), so it needs this to stay
+      left-aligned; `RecipeModal` (rendered outside `.app-page`) doesn't
+      strictly need it, but one shared rule for both is simpler.
+    - `p { margin: 0; }` -- as the item asked to check. Turned out to be
+      needed by several components that only override *one* margin side
+      themselves (`.body-text`, `.frtcon-condition-line`,
+      `.frtcon-footnote`, `.nws-alert-area-desc`, `.nws-alert-headline`,
+      `.nws-alert-description`, `.modal-paragraph`) -- without the
+      reset, the browser's default ~1em <p> margin would reappear on
+      whichever side each one doesn't already set.
+    - `h1, h2 { font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+      font-weight: 500; }` -- **not called out by this item**, but found
+      while tracing dependencies: `.app-title`/`.card-title`/`.modal-title`
+      all set their own margin/font-size/color, but none set
+      font-family or font-weight, so removing the file outright would
+      have silently swapped headings from this font/weight to
+      `.app-page`'s inherited Arial at browser-default bold. Dropped the
+      `color: var(--text-h)` part of the original rule, since every
+      current h1/h2 already sets its own `color` (confirmed unused).
+    - `:root { font-size: 18px; line-height: 145%; letter-spacing:
+      0.18px; ... }` plus its `@media (max-width: 1024px) { font-size:
+      16px }` companion and the font-rendering hints
+      (`font-synthesis`/`text-rendering`/`-webkit-font-smoothing`/
+      `-moz-osx-font-smoothing`) -- **also not called out**, and the
+      single biggest risk found in this cleanup: this is where the base
+      font-size for most unstyled/under-styled text in the app
+      (`.body-text`, `.modal-paragraph`, all the `.nws-alert-*`
+      paragraphs, `.frtcon-condition-line`, etc. -- none of which set
+      their own `font-size`) actually comes from, via inheritance.
+      Deleting the file without preserving this would have silently
+      shrunk most of the app's body text from 18px (16px under 1024px)
+      to the fixed 16px browser default.
+  - **Dropped entirely** (confirmed not relied on anywhere, by grepping
+    the component tree for every selector/variable in the file): the
+    `#root` rule this item exists to fix (`width: 1126px`, the buggy
+    `border-inline: 1px solid var(--border)`, `min-height: 100svh`,
+    the flex properties, and its `text-align: center` -- `.app-page`
+    already independently provides the equivalent min-height/background/
+    centering, per its own comment); the redundant `body { margin: 0 }`
+    (styles.css's existing `html, body, #root` rule already covers it);
+    `color-scheme: light dark`; the `:root` `color`/`background` and
+    unused `--text`/`--bg`/`--accent*`/`--code-bg`/`--social-bg`/
+    `--shadow` custom properties (all fully overridden or unreferenced);
+    the entire `@media (prefers-color-scheme: dark)` block (this is
+    where the buggy `--border` was actually *defined* -- it only bit in
+    dark mode because light mode left it undefined); `#social
+    .button-icon`, `.counter`, and `code` (grepped -- no `<code>`
+    element or `.counter`/`#social` class anywhere in `src/`).
+  - **Judgment call, not asked for by this item:** left `color-scheme:
+    light dark` out rather than replacing it with `color-scheme: dark`
+    to match the app's permanently-dark visual design. The app has no
+    native form widgets beyond one fully custom-styled text input, so
+    the only realistic effect is native scrollbar/focus-ring theming
+    for OS-dark-mode users, which is minor and orthogonal to this
+    cleanup either way -- flagging in case someone disagrees.
+  - Updated the stale comment on `.app-page`'s `text-align: center`
+    (it referenced "the leftover Vite template rule in index.css" as a
+    coincidental duplicate that "could be cleaned out from under this
+    later" -- that's exactly what just happened, so the comment now
+    reflects that instead of describing it as a future risk).
+  - **Verified live in a real browser**, using `git stash`/`git stash
+    pop` to flip between the pre- and post-cleanup code on the same
+    running dev server: loaded a real ZIP lookup (55771) so most
+    affected components render (headings, `.body-text`, the FRTCON
+    condition box's commentary lines and footnote, alert cards), and
+    confirmed via `getComputedStyle` that h1/h2 font-family/weight,
+    `.body-text`/`.frtcon-condition-line`/`.frtcon-footnote` margins,
+    and the root font-size are byte-for-byte identical before and after
+    (`system-ui, "Segoe UI", Roboto, sans-serif` / `500` / `0px`/`0px`
+    margins / `18px` in both cases) -- not just visually similar,
+    numerically unchanged. Screenshots of the main page and the
+    `RecipeModal` are pixel-identical between the two states (aside from
+    the FRTCON commentary's own intentional randomization). Opened
+    `IOSInstallHelp` (via the same temporary `index.html` UA shim
+    technique used for #7/#5, reverted after) and confirmed its dialog
+    still computes `text-align: left` and the expected paragraph margins
+    despite being nested in `.app-page`'s centered context.
+  - **Not independently re-verified:** phone width (this sandbox's
+    browser window has a fixed size that `resize_window` couldn't
+    shrink below ~2560px, so no literal narrow-viewport screenshot was
+    taken) and OS dark mode specifically (no tool here can emulate
+    `prefers-color-scheme`). Neither carries real risk: the
+    `@media (max-width: 1024px)` rule moved into `styles.css` is
+    byte-for-byte the same selector/media-query text as before, so its
+    behavior can't have changed by construction; and OS dark mode's
+    only relevant effect (the `--border` bug) is fixed by deleting the
+    rule that defined `--border` in the first place, regardless of
+    which color scheme is active.
+  - Recipe print preview needed no live check: `index.css` never
+    contained any `@media print` rules, and the existing `@media print`
+    block in `styles.css` was left untouched by this change, so print
+    rendering cannot be affected either way.
+  - `npm run lint` and `vite build` both pass (CSS bundle shrank from
+    8.15 kB to 6.68 kB raw / 2.44 kB to 1.94 kB gzipped, consistent with
+    removing genuinely dead rules rather than just moving everything).
 
 ### 10. README is out of date — ✅ FIXED
 

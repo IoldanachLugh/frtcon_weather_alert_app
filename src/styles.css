@@ -13,6 +13,57 @@ body,
   width: 100%;
 }
 
+/* Base typography, inherited by everything that doesn't set its own
+   font-size/line-height (most raw NWS/recipe text and a handful of
+   <p> tags -- see .body-text, .modal-paragraph, .nws-alert-* below).
+   Carried over from the Vite starter template's :root rule when
+   src/index.css was removed (see PLAN.md #9) because enough of the app
+   actually depends on it that dropping it silently would have shrunk
+   most unstyled text from 18px/16px-responsive down to the browser
+   default 16px fixed. */
+:root {
+  font-size: 18px;
+  line-height: 145%;
+  letter-spacing: 0.18px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+}
+
+/* Every <p> in this app relies on zero default margin and sets at most
+   one side itself (e.g. .modal-paragraph only sets margin-top) --
+   without this, the browser's default ~1em top+bottom <p> margin would
+   reappear on whichever side each component doesn't already override. */
+p {
+  margin: 0;
+}
+
+/* h1/h2 elements (.app-title, .card-title, .modal-title) all set their
+   own margin/font-size/color, but none set font-family or font-weight --
+   without this, they'd inherit .app-page's Arial and the browser's bold
+   default instead of the app's actual heading typeface/weight. */
+h1,
+h2 {
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+}
+
+/* IOSInstallHelp's modal is nested inside .app-page, so it inherits that
+   element's center text-align (see the comment on .app-page below) --
+   this keeps its instructions left-aligned. RecipeModal doesn't strictly
+   need this (it's rendered outside .app-page), but sharing one rule for
+   both modals is simpler than splitting it. */
+div[role="dialog"] {
+  text-align: left;
+}
+
 @keyframes snowFall {
   0% {
     transform: translateY(-10px) translateX(0px);
@@ -73,10 +124,10 @@ body,
   padding: 24px;
   box-sizing: border-box;
   border: none;
-  /* Intentional: the app's general text/content is center-aligned. Stated
-     explicitly here rather than relying on the leftover Vite template rule
-     in index.css, which happens to set the same thing but for unrelated
-     reasons and could be cleaned out from under this later. */
+  /* Intentional: the app's general text/content is center-aligned. This
+     used to coincidentally duplicate a leftover Vite template rule in
+     src/index.css (removed -- see PLAN.md #9); stated explicitly here so
+     nothing else depends on that redundancy existing. */
   text-align: center;
 }
 
