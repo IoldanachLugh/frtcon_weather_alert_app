@@ -30,8 +30,8 @@ Live at [frtcon.com](https://frtcon.com).
 |---|---|---|
 | **1** | Severe — stay inside, this is not a drill | Blizzard Warning, Ice Storm Warning, Heavy Freezing Spray Warning, Winter Storm Warning w/ significant ice |
 | **2** | Major weather warning active | Winter Storm Warning, Lake Effect Snow Warning, Snow Squall Warning, Freezing Rain Warning, Extreme Cold Warning |
-| **3** | Moderate impacts active | Winter Weather Advisory, Freezing Fog/Rain Advisory, Snow/Blowing Snow Advisory, Cold Weather Advisory, Frost Advisory, Freeze Warning |
-| **4** | Being watched, no major impacts yet | Winter Storm/Blizzard/Lake Effect Snow/Ice Storm/Extreme Cold/Freeze Watch, Heavy Freezing Spray Watch |
+| **3** | Moderate impacts active | Winter Weather Advisory, Freezing Fog/Rain Advisory, Snow/Blowing Snow Advisory, Cold Weather Advisory |
+| **4** | Being watched, no major impacts yet | Winter Storm/Blizzard/Lake Effect Snow/Ice Storm/Extreme Cold/Freeze Watch, Heavy Freezing Spray Watch, Frost Advisory, Freeze Warning |
 | **5** | All clear | No active alerts, or active alerts unrelated to winter weather |
 
 Classification is done via keyword matching against each alert's event type,

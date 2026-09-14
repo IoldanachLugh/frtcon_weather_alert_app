@@ -256,7 +256,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
 
 ## Product changes (decided)
 
-### 13. Lower Frost Advisory from FRTCON 3 to FRTCON 4
+### 13. Lower Frost Advisory (and Freeze Warning) from FRTCON 3 to FRTCON 4 — ✅ FIXED
 
 - **Where:** `src/lib/frtcon.js:74` (`event.includes("frost advisory")` in
   the level-3 check).
@@ -284,15 +284,32 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   Advisory tag.
 - **Verify:** run the ZIP 55771 test script (or any ZIP with an active
   Frost Advisory and no other winter alerts); it should score FRTCON 4.
-
-## Open product questions (not bugs)
-
-- **Freeze Warning → FRTCON 3** ("Moderate winter weather impacts are
-  active"). Like a Frost Advisory, it's mainly agricultural and common
-  outside real winter conditions. Consider whether it should follow Frost
-  Advisory down to FRTCON 4 (#13). After #13, a Freeze Warning would
-  outrank a Frost Advisory by one level, which matches their relative
-  severity.
+- **Done:** decided (per user, 2026-09-14) to move Freeze Warning to
+  FRTCON 4 alongside Frost Advisory rather than leave it at level 3 —
+  same reasoning (mostly agricultural, common outside real winter
+  conditions), so both are now weighted equally. Implemented in
+  `src/lib/frtcon.js`: both `frost advisory` and `freeze warning` moved
+  from the level-3 `match` list to the level-4 list, with comments at both
+  sites explaining why. Updated the README FRTCON scale table to match.
+  Verified with synthetic alerts covering: Frost Advisory alone → 4,
+  Freeze Warning alone → 4, Frost Advisory + Winter Weather Advisory → 3
+  (the more severe alert still wins), Freeze Warning + Winter Storm
+  Warning → 2, and sanity checks that Freeze Watch (level 4) and Cold
+  Weather Advisory (still level 3) were untouched. Re-ran the live ZIP
+  55771 test (Orr, MN — lone Frost Advisory): now scores **FRTCON 4**
+  instead of the previous FRTCON 3. `npm run lint` and `vite build` both
+  pass.
+  - **Considered and left alone (per user, 2026-09-14):** the level-4
+    title/reason ("Being watched, no major impacts yet" / "Winter weather
+    is being watched, but major impacts are not active yet") and its
+    flavor text in `src/data/alertMessages.js` were written for a Watch --
+    weather that hasn't arrived yet -- and read a little differently next
+    to an active Frost Advisory or Freeze Warning. Decided not to special-
+    case the copy for this: those alerts aren't significant enough in this
+    context to warrant their own wording, so sharing level 4's existing
+    "low-stakes" framing is fine as-is. No change made.
+  - **Still open:** automated test coverage for this (#11) -- verified
+    manually above, not yet captured in a test suite.
 
 ## Checked, no change needed
 

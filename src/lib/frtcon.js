@@ -68,11 +68,13 @@ export function classifyAlert(alert) {
         event.includes("freezing rain advisory") ||
         event.includes("snow advisory") ||
         event.includes("blowing snow advisory") ||
-        // Advisory-tier cold hazards: significant but short of the
-        // "stay inside" threshold, similar in spirit to a weather advisory.
-        event.includes("cold weather advisory") ||
-        event.includes("frost advisory") ||
-        event.includes("freeze warning"),
+        // Advisory-tier cold hazard: significant but short of the "stay
+        // inside" threshold, similar in spirit to a weather advisory.
+        // (Frost Advisory and Freeze Warning used to live here too, but
+        // those are mostly agricultural alerts -- common in spring/fall
+        // far from real winter conditions, and not really a "should I
+        // stay home" event -- so they've been moved down to level 4.)
+        event.includes("cold weather advisory"),
     },
     {
       level: 4,
@@ -86,7 +88,14 @@ export function classifyAlert(alert) {
         event.includes("ice storm watch") ||
         event.includes("extreme cold watch") ||
         event.includes("heavy freezing spray watch") ||
-        event.includes("freeze watch"),
+        event.includes("freeze watch") ||
+        // Frost Advisory and Freeze Warning: mostly agricultural cold
+        // hazards, common outside real winter conditions (e.g. a fall
+        // Frost Advisory), so treated at this same low-stakes level
+        // alongside the watches rather than at level 3's "moderate
+        // impacts active" tier.
+        event.includes("frost advisory") ||
+        event.includes("freeze warning"),
     },
   ];
 
