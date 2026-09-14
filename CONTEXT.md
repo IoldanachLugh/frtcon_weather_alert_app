@@ -116,6 +116,16 @@ infrastructure decisions.
   be a **caching artifact**, not a real CSS bug — confirmed via incognito
   testing. Worth ruling out caching first for any "looks different on a
   specific device" report before assuming it's a real rendering issue.
+- **Service workers update lazily, not on next deploy.** Shipping a new
+  `sw.js` doesn't mean a device picks it up the next time the app opens —
+  the *old* SW instance is still active and controlling the page. The
+  update cycle is: new SW installs in the background on the next visit →
+  `skipWaiting()`/`clients.claim()` force it to take over on that load →
+  but in practice this can mean the app needs to be fully closed and
+  reopened **twice** after a `sw.js` deploy before the new one is actually
+  active. To force it immediately for testing, uninstall and reinstall the
+  PWA rather than assuming one relaunch is enough to confirm a fix (or a
+  regression) in service-worker behavior specifically.
 
 ## Deliberately decided against (don't re-litigate without new info)
 
