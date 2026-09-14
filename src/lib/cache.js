@@ -43,6 +43,35 @@ export function makeAlertsCacheKey(lat, lon) {
   return `${ALERTS_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
 }
 
+// getCacheItem only evicts an expired entry when that exact key is read
+// again -- a zone/alerts cache key for a location the user never revisits
+// just sits in localStorage forever. Harmless individually, but with one
+// key per distinct lat/lon rounding bucket, it adds up over time. Call once
+// at app startup to sweep anything already expired.
+const TTL_MS_BY_PREFIX = {
+  [ZIP_CACHE_PREFIX]: CACHE_TTL_MS,
+  [ZONE_CACHE_PREFIX]: CACHE_TTL_MS,
+  [ALERTS_CACHE_PREFIX]: ALERTS_CACHE_TTL_MS,
+};
+
+export function sweepExpiredCache() {
+  try {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      const prefix = Object.keys(TTL_MS_BY_PREFIX).find((p) => key.startsWith(p));
+      if (prefix) {
+        // Reuses getCacheItem's own expiry check and eviction rather than
+        // duplicating it -- the return value doesn't matter here, only
+        // the side effect of removing the key when it's expired.
+        getCacheItem(key, TTL_MS_BY_PREFIX[prefix]);
+      }
+    }
+  } catch {
+    // Ignore storage failures (see safeGetItem/safeSetItem above for why
+    // this can throw) -- worst case, the sweep just doesn't happen.
+  }
+}
+
 // For the handful of plain (non-TTL) localStorage reads/writes elsewhere in
 // the app -- e.g. remembering the last-used ZIP/lookup method -- that don't
 // go through getCacheItem/setCacheItem above. Touching localStorage at all

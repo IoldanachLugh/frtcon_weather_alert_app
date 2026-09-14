@@ -170,51 +170,66 @@ export default function App() {
   // visit (see the frtcon_last_source/frtcon_last_zip writes below), so a
   // denied permission or a bad ZIP doesn't get silently auto-retried and
   // re-shown as the first thing a returning visitor sees.
-  const runLookupFromCoordinates = useCallback(async (lat, lon, inputSource, { skipCache = false } = {}) => {
-    // Cancel any lookup still in flight so its result can't clobber this one.
-    if (activeRequestRef.current) {
-      activeRequestRef.current.abort();
-    }
-    const controller = new AbortController();
-    activeRequestRef.current = controller;
-    const { signal } = controller;
+  // `controller`, if given, is one the caller already owns and has set as
+  // activeRequestRef.current (performZipLookup does this while resolving
+  // the ZIP -> lat/lon step) -- reusing it here instead of creating a
+  // second one avoids immediately self-aborting that still-fresh
+  // controller for no reason right as it's handed off. Callers with no
+  // controller of their own (geolocation has no AbortController
+  // equivalent) fall back to the original abort-whatever's-in-flight-then-
+  // create-a-new-one behavior, which is still what actually cancels a
+  // concurrent ZIP lookup if the user switches methods mid-request.
+  const runLookupFromCoordinates = useCallback(
+    async (lat, lon, inputSource, { skipCache = false, controller: existingController } = {}) => {
+      let controller = existingController;
+      if (!controller) {
+        // Cancel any lookup still in flight so its result can't clobber this one.
+        if (activeRequestRef.current) {
+          activeRequestRef.current.abort();
+        }
+        controller = new AbortController();
+        activeRequestRef.current = controller;
+      }
+      const { signal } = controller;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    try {
-      // Fetched independently, not chained: getZoneByPoint is only needed
-      // for the human-readable zone name, while alerts come from a direct
-      // point query (see getActiveAlertsByPoint for why that's not a
-      // zone-based lookup) -- neither depends on the other's result, so
-      // there's no reason to wait for one before starting the other.
-      const [zone, alerts] = await Promise.all([
-        getZoneByPoint(lat, lon, { signal }),
-        getActiveAlertsByPoint(lat, lon, { signal, skipCache }),
-      ]);
+      try {
+        // Fetched independently, not chained: getZoneByPoint is only needed
+        // for the human-readable zone name, while alerts come from a direct
+        // point query (see getActiveAlertsByPoint for why that's not a
+        // zone-based lookup) -- neither depends on the other's result, so
+        // there's no reason to wait for one before starting the other.
+        const [zone, alerts] = await Promise.all([
+          getZoneByPoint(lat, lon, { signal }),
+          getActiveAlertsByPoint(lat, lon, { signal, skipCache }),
+        ]);
 
-      if (signal.aborted) return false;
+        if (signal.aborted) return false;
 
-      setStatusMessage("");
-      setResult({
-        source: inputSource,
-        lat,
-        lon,
-        zone,
-        alerts,
-        fetchedAt: Date.now(),
-      });
-      return true;
-    } catch (err) {
-      if (signal.aborted) return false;
-      setResult(null);
-      setStatusMessage("");
-      setError(err instanceof Error ? err.message : "Something went wrong during lookup.");
-      return false;
-    } finally {
-      if (!signal.aborted) setLoading(false);
-    }
-  }, []);
+        setStatusMessage("");
+        setResult({
+          source: inputSource,
+          lat,
+          lon,
+          zone,
+          alerts,
+          fetchedAt: Date.now(),
+        });
+        return true;
+      } catch (err) {
+        if (signal.aborted) return false;
+        setResult(null);
+        setStatusMessage("");
+        setError(err instanceof Error ? err.message : "Something went wrong during lookup.");
+        return false;
+      } finally {
+        if (!signal.aborted) setLoading(false);
+      }
+    },
+    []
+  );
 
   // Shared by both refresh paths below (the interval and the
   // visibilitychange catch-up). Deliberately bypasses the TTL cache
@@ -381,7 +396,7 @@ export default function App() {
       try {
         const location = await getLatLonFromZip(zipValue, { signal });
         if (signal.aborted || mySeq !== requestSeqRef.current) return;
-        const succeeded = await runLookupFromCoordinates(location.lat, location.lon, "zip");
+        const succeeded = await runLookupFromCoordinates(location.lat, location.lon, "zip", { controller });
         // Remember the ZIP and method used so a return visit can skip
         // straight to it instead of waiting for another button press --
         // but only once it's actually worked. Persisting this before the

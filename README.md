@@ -96,18 +96,27 @@ Cloudflare Tunnel). A few things beyond the built `dist/` output need to be
 in place for full functionality:
 
 - **PWA install support** relies on `manifest.json`, `sw.js`, `icon-192.png`,
-  and `icon-512.png` living in `public/` (so Vite includes them in the
-  build) and landing at the site root, plus these tags already present in
-  `index.html`'s `<head>` — listed here so anyone rebuilding `index.html`
-  from scratch knows they're required, not because they're currently
-  missing:
+  `icon-512.png`, and `icon-512-maskable.png` living in `public/` (so Vite
+  includes them in the build) and landing at the site root, plus these tags
+  already present in `index.html`'s `<head>` — listed here so anyone
+  rebuilding `index.html` from scratch knows they're required, not because
+  they're currently missing:
 
   ```html
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0b1f3a" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   ```
+
+  `icon-512-maskable.png` is a separate asset from `icon-512.png`, not a
+  duplicate reference to it: Android applies its own shape mask (circle,
+  squircle, etc.) to a `purpose: "maskable"` icon, so it needs the artwork
+  pre-shrunk into the center safe zone with a full-bleed background —
+  unlike `icon-192.png`/`icon-512.png` (`purpose: "any"`), which have
+  transparent corners around a rounded-square icon and are meant to be
+  shown as-is.
 
   The service worker is intentionally minimal — it does not cache anything
   and always defers to the network. This is deliberate: FRTCON shows live

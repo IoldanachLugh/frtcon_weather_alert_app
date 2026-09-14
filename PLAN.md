@@ -572,7 +572,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     `matchingAlerts` sorted
   - `pickRandomItems` returns `min(count, length)` unique items
 
-### 12. Minor
+### 12. Minor — ✅ FIXED
 
 - **`public/manifest.json`:** no `"purpose": "maskable"` icon, so Android
   shows the icon shrunk inside a white shape. Add a 512px maskable variant
@@ -594,6 +594,76 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   unreachable because `runLookupFromCoordinates` never throws), but
   confusing. Consider passing the existing controller into
   `runLookupFromCoordinates` instead of creating a second one.
+- **Done:** all five fixed.
+  - **Maskable icon:** generated `public/icon-512-maskable.png` from the
+    existing `icon-512.png` artwork (via ImageMagick, no new design
+    tool) rather than a fresh asset -- composited the existing icon
+    scaled to 70% (360x360) centered onto a full-bleed `#0b1f3a` square
+    background (matching the icon's own background color exactly, so
+    there's no visible seam between the original icon's own rounded
+    corners and the new full-bleed backdrop). 70% was chosen over the
+    more common 80% convention for extra safety margin: the source
+    icon's snowflake tips already reach close to its own edges, and at
+    literal 80% scale the tips would sit only ~2% inside the
+    theoretical safe-zone circle (80% diameter / 40% radius) -- 70%
+    puts them at a comfortable ~14% margin instead. Added the new icon
+    to `manifest.json`'s `icons` array with `"purpose": "maskable"`,
+    keeping the existing `"any"` entries unchanged.
+  - **`mobile-web-app-capable`:** added to `index.html`, keeping the
+    `apple-mobile-web-app-capable` tag alongside it (still needed for
+    older iOS) rather than replacing it.
+  - **`recipe.js`:** step 4's "in the pan" -> "in the dish", since at
+    that point in the recipe the bread is being dipped in step 3's
+    batter dish, not yet transferred to the cast-iron pan (that happens
+    in step 5, "Butter your pan and add the bread").
+  - **`cache.js`:** added `sweepExpiredCache()`, called once from
+    `main.jsx` at startup. Iterates `Object.keys(localStorage)`,
+    matches each key against the three TTL-cache prefixes
+    (`ZIP_CACHE_PREFIX`/`ZONE_CACHE_PREFIX` at `CACHE_TTL_MS`,
+    `ALERTS_CACHE_PREFIX` at the shorter `ALERTS_CACHE_TTL_MS`), and
+    calls the existing `getCacheItem` on each match purely for its
+    expiry-eviction side effect rather than duplicating that check.
+    Leaves `frtcon_last_zip`/`frtcon_last_source`/anything else alone.
+  - **`App.jsx` controller refactor:** `runLookupFromCoordinates` now
+    accepts an optional `{ controller }` option; when given (as
+    `performZipLookup` now does, passing its own controller through
+    instead of letting `runLookupFromCoordinates` create and
+    self-abort-into a second one), it's used directly instead of the
+    original abort-whatever's-in-flight-then-create-a-new-one dance.
+    Callers with no controller of their own (`handleUseBrowserLocation`
+    -- geolocation has no `AbortController` equivalent) are unaffected
+    and still get that original behavior, which is what's actually
+    needed there to cancel a concurrent ZIP lookup.
+  - **Verified live in a real browser** (all five, via `npm run dev` +
+    browser automation):
+    - Real ZIP lookup (55771) still works normally after the
+      `runLookupFromCoordinates` refactor.
+    - Fired two ZIP submissions back-to-back with no delay (55771 then
+      90210) to specifically exercise the cancellation path the
+      refactor must not weaken: the final rendered result and
+      `frtcon_last_zip` both reflect only the second ZIP: network logs
+      confirmed the *first* ZIP's own `zippopotam.us` request never
+      even completed (only the second ZIP's requests appear at all,
+      including the downstream `api.weather.gov` calls) -- genuinely
+      aborted, not just superseded-after-completing.
+    - Recipe modal now shows "Put a couple pieces of bread in the dish
+      for a few seconds..." in the Steps list.
+    - Fetched the live `manifest.json` through the running page and
+      confirmed the new maskable icon entry is present alongside the
+      unchanged `"any"` ones, and that `/icon-512-maskable.png` itself
+      serves as a real 200 `image/png`; confirmed the new
+      `mobile-web-app-capable` meta tag renders in the DOM.
+    - Seeded `localStorage` with expired zone/zip/alerts entries, fresh
+      zone/alerts entries, and the plain non-TTL
+      `frtcon_last_zip`/`frtcon_last_source` keys, then reloaded:
+      confirmed only the three expired entries were swept, the fresh
+      ones and the non-TTL keys were left untouched.
+    - Also spot-checked the maskable icon's design itself (not just
+      that it's wired up) by simulating a full circular Android mask
+      over it locally -- the snowflake stays comfortably inside.
+  - `npm run lint` and `vite build` both pass; `manifest.json` confirmed
+    valid JSON and the new icon confirmed present in `dist/` after a
+    production build.
 
 ---
 
