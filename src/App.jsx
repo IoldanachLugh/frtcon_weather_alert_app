@@ -157,6 +157,12 @@ export default function App() {
       }[frtcon.level] || 8
     : 8;
 
+  // Resolves to true if it actually landed a result, false otherwise
+  // (failed, or superseded by a newer lookup before it finished) -- callers
+  // use this to decide whether the lookup is worth remembering for next
+  // visit (see the frtcon_last_source/frtcon_last_zip writes below), so a
+  // denied permission or a bad ZIP doesn't get silently auto-retried and
+  // re-shown as the first thing a returning visitor sees.
   const runLookupFromCoordinates = useCallback(async (lat, lon, inputSource, { skipCache = false } = {}) => {
     // Cancel any lookup still in flight so its result can't clobber this one.
     if (activeRequestRef.current) {
@@ -180,7 +186,7 @@ export default function App() {
         getActiveAlertsByPoint(lat, lon, { signal, skipCache }),
       ]);
 
-      if (signal.aborted) return;
+      if (signal.aborted) return false;
 
       setStatusMessage("");
       setResult({
@@ -191,11 +197,13 @@ export default function App() {
         alerts,
         fetchedAt: Date.now(),
       });
+      return true;
     } catch (err) {
-      if (signal.aborted) return;
+      if (signal.aborted) return false;
       setResult(null);
       setStatusMessage("");
       setError(err instanceof Error ? err.message : "Something went wrong during lookup.");
+      return false;
     } finally {
       if (!signal.aborted) setLoading(false);
     }
@@ -263,9 +271,6 @@ export default function App() {
     setSource("browser");
     setError("");
     setStatusMessage("Locating you... this can take a few seconds.");
-    // Remember which method was used so a return visit can skip straight
-    // to it instead of waiting for another button press.
-    safeSetItem("frtcon_last_source", "browser");
 
     // Claim this lookup's sequence number now, before the (unabortable)
     // geolocation call even starts. If the user kicks off another lookup
@@ -285,7 +290,15 @@ export default function App() {
       if (mySeq !== requestSeqRef.current) return; // superseded by a newer lookup
       const lat = Number(position.coords.latitude.toFixed(4));
       const lon = Number(position.coords.longitude.toFixed(4));
-      await runLookupFromCoordinates(lat, lon, "browser");
+      const succeeded = await runLookupFromCoordinates(lat, lon, "browser");
+      // Remember which method was used so a return visit can skip straight
+      // to it instead of waiting for another button press -- but only once
+      // it's actually worked. Persisting this before the lookup resolves
+      // (as this used to) meant a denied-permission or offline failure
+      // got saved as "last successful method" too, so every later visit
+      // silently re-ran the same failing lookup and opened straight on an
+      // error instead of the last good result.
+      if (succeeded) safeSetItem("frtcon_last_source", "browser");
     };
 
     const onFinalError = (geoError) => {
@@ -359,13 +372,20 @@ export default function App() {
       setLoading(true);
 
       try {
-        safeSetItem("frtcon_last_zip", zipValue);
-        // Remember which method was used so a return visit can skip
-        // straight to it instead of waiting for another button press.
-        safeSetItem("frtcon_last_source", "zip");
         const location = await getLatLonFromZip(zipValue, { signal });
         if (signal.aborted || mySeq !== requestSeqRef.current) return;
-        await runLookupFromCoordinates(location.lat, location.lon, "zip");
+        const succeeded = await runLookupFromCoordinates(location.lat, location.lon, "zip");
+        // Remember the ZIP and method used so a return visit can skip
+        // straight to it instead of waiting for another button press --
+        // but only once it's actually worked. Persisting this before the
+        // lookup resolves (as this used to) meant a nonexistent ZIP or a
+        // network failure got saved as "last successful method" too, so
+        // every later visit silently re-ran the same failing lookup and
+        // opened straight on an error instead of the last good result.
+        if (succeeded) {
+          safeSetItem("frtcon_last_zip", zipValue);
+          safeSetItem("frtcon_last_source", "zip");
+        }
       } catch (err) {
         if (signal.aborted || mySeq !== requestSeqRef.current) return;
         setLoading(false);
@@ -396,7 +416,25 @@ export default function App() {
 
     const savedSource = safeGetItem("frtcon_last_source");
     if (savedSource === "browser") {
-      handleUseBrowserLocation();
+      // A permission denial won't have changed on its own since the last
+      // visit, so silently auto-retrying it would just flash "Locating
+      // you..." right before failing again with the same error. Check
+      // first where the browser supports it (best-effort: the Permissions
+      // API isn't universal, and Safari in particular can be unreliable
+      // for "geolocation" specifically -- if the check itself fails or
+      // isn't available, just fall back to attempting the lookup as
+      // before). Note this only skips the *silent auto-resume*; a manual
+      // click of "Use Browser Location" always still attempts it.
+      if (navigator.permissions?.query) {
+        navigator.permissions
+          .query({ name: "geolocation" })
+          .then((status) => {
+            if (status.state !== "denied") handleUseBrowserLocation();
+          })
+          .catch(() => handleUseBrowserLocation());
+      } else {
+        handleUseBrowserLocation();
+      }
     } else if (savedSource === "zip" && savedZip && isValidZip(savedZip)) {
       setSource("zip");
       performZipLookup(savedZip);

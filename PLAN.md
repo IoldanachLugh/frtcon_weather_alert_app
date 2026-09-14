@@ -182,7 +182,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     still reaches the user unwrapped. Not one of the four cases named in
     this item; flagging in case it's worth a follow-up.
 
-### 5. Failed lookups are remembered and auto-retried on every visit
+### 5. Failed lookups are remembered and auto-retried on every visit — ✅ FIXED
 
 - **Where:** `src/App.jsx:220` saves `frtcon_last_source = "browser"` before
   geolocation succeeds; `src/App.jsx:314-317` saves the ZIP and source
@@ -197,6 +197,34 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   - Optionally, skip auto-resume of browser location when
     `navigator.permissions?.query({ name: "geolocation" })` reports
     `denied`.
+- **Done:** implemented as described, both the required fix and the
+  optional one, in `src/App.jsx`.
+  - `runLookupFromCoordinates` now returns `true` on an actual landed
+    result and `false` on failure or on being superseded by a newer
+    lookup -- it was the one place that already knew the real outcome of
+    both the browser-location and ZIP paths.
+  - `handleUseBrowserLocation`'s `onSuccess` and `performZipLookup` each
+    write `frtcon_last_source` (and, for ZIP, `frtcon_last_zip`) only when
+    that return value is `true`, instead of unconditionally before the
+    lookup even started.
+  - The mount effect's silent auto-resume for `savedSource === "browser"`
+    now calls `navigator.permissions.query({ name: "geolocation" })`
+    first and skips the attempt if `state === "denied"`; if the
+    Permissions API isn't available or the query itself rejects, it falls
+    back to attempting the lookup exactly as before. Only the *silent*
+    auto-resume is affected -- a manual click of "Use Browser Location"
+    always still attempts it regardless of this check.
+  - **Verified by hand-tracing** each scenario against the new code (no
+    interactive browser available in this sandbox to click through it
+    live -- see #3's note on the same limitation): permission denied on
+    first try → nothing persisted, no auto-retry next visit; a
+    nonexistent ZIP → same; a failed attempt *after* an earlier success →
+    the earlier good ZIP/source is not clobbered, since persistence only
+    happens in the success branch; permission denied with
+    `frtcon_last_source` still "browser" from a past success → the new
+    Permissions check skips the doomed auto-attempt instead of flashing
+    "Locating you..." right before failing again. `npm run lint` and
+    `vite build` both pass.
 
 ### 6. Focus isn't restored after closing a modal opened from the menu
 
