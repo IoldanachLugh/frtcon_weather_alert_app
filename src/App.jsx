@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./styles.css";
-import { isValidZip, getLatLonFromZip, getZoneByPoint, getActiveAlertsByZone, ALERTS_AUTO_REFRESH_MS } from "./lib/weatherApi";
+import { isValidZip, getLatLonFromZip, getZoneByPoint, getActiveAlertsByPoint, ALERTS_AUTO_REFRESH_MS } from "./lib/weatherApi";
 import { safeGetItem, safeSetItem } from "./lib/cache";
 import { determineFrtcon } from "./lib/frtcon";
 import { SnowOverlay } from "./components/SnowOverlay";
@@ -163,14 +163,23 @@ export default function App() {
     setError("");
 
     try {
-      const zone = await getZoneByPoint(lat, lon, { signal });
-      const alerts = await getActiveAlertsByZone(zone.zoneId, { signal, skipCache });
+      // Fetched independently, not chained: getZoneByPoint is only needed
+      // for the human-readable zone name, while alerts come from a direct
+      // point query (see getActiveAlertsByPoint for why that's not a
+      // zone-based lookup) -- neither depends on the other's result, so
+      // there's no reason to wait for one before starting the other.
+      const [zone, alerts] = await Promise.all([
+        getZoneByPoint(lat, lon, { signal }),
+        getActiveAlertsByPoint(lat, lon, { signal, skipCache }),
+      ]);
 
       if (signal.aborted) return;
 
       setStatusMessage("");
       setResult({
         source: inputSource,
+        lat,
+        lon,
         zone,
         alerts,
       });
@@ -184,22 +193,23 @@ export default function App() {
     }
   }, []);
 
-  // Keep alerts fresh for whatever zone is currently displayed, without the
-  // user needing to manually re-search. Deliberately bypasses the TTL cache
-  // (skipCache: true below) rather than waiting for it to expire -- this is
-  // live weather data, so every tick genuinely hits the network. Note this
-  // interval (ALERTS_AUTO_REFRESH_MS) and the alerts cache TTL
-  // (ALERTS_CACHE_TTL_MS in lib/cache.js) are independently defined but
-  // currently equal; if either is ever tuned, check whether that's still
-  // the intended relationship.
+  // Keep alerts fresh for whatever location is currently displayed, without
+  // the user needing to manually re-search. Deliberately bypasses the TTL
+  // cache (skipCache: true below) rather than waiting for it to expire --
+  // this is live weather data, so every tick genuinely hits the network.
+  // Keyed on lat/lon (not zoneId) since alerts are now fetched by point,
+  // not by zone -- see getActiveAlertsByPoint. Note this interval
+  // (ALERTS_AUTO_REFRESH_MS) and the alerts cache TTL (ALERTS_CACHE_TTL_MS
+  // in lib/cache.js) are independently defined but currently equal; if
+  // either is ever tuned, check whether that's still the intended
+  // relationship.
   useEffect(() => {
-    if (!result?.zone?.zoneId) return;
-
+    if (result?.lat == null || result?.lon == null) return;
     const intervalId = setInterval(() => {
-      getActiveAlertsByZone(result.zone.zoneId, { skipCache: true })
+      getActiveAlertsByPoint(result.lat, result.lon, { skipCache: true })
         .then((alerts) => {
           setResult((prev) =>
-            prev && prev.zone.zoneId === result.zone.zoneId ? { ...prev, alerts } : prev
+            prev && prev.lat === result.lat && prev.lon === result.lon ? { ...prev, alerts } : prev
           );
         })
         .catch(() => {
@@ -209,7 +219,7 @@ export default function App() {
     }, ALERTS_AUTO_REFRESH_MS);
 
     return () => clearInterval(intervalId);
-  }, [result?.zone?.zoneId]);
+  }, [result?.lat, result?.lon]);
 
   function handleUseBrowserLocation() {
     setSource("browser");
@@ -488,9 +498,9 @@ export default function App() {
             </div>
 
             <div>
-              <div className="active-alerts-heading">Active Zone Alerts</div>
+              <div className="active-alerts-heading">Active Alerts</div>
               {result.alerts.length === 0 ? (
-                <div className="card">No active alerts were returned for this zone.</div>
+                <div className="card">No active alerts were returned for this location.</div>
               ) : (
                 result.alerts.map((feature) => <AlertCard key={feature.id} feature={feature} />)
               )}

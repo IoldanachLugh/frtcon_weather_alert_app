@@ -16,8 +16,8 @@ Live at [frtcon.com](https://frtcon.com).
 - Remembers whichever method (location or ZIP) you used last, and
   automatically re-runs it on your next visit — no need to click a button
   again.
-- Lists every raw active NWS alert for your zone, not just the one driving
-  the FRTCON score.
+- Lists every raw active NWS alert covering your location, not just the one
+  driving the FRTCON score.
 - Has a printable recipe modal (Jeff's French Toast recipe) that prints
   cleanly on its own, independent of the rest of the page.
 - Installable as a home-screen app on Android (via the in-app "Install App"

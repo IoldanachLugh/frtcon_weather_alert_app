@@ -39,6 +39,10 @@ export function makeZoneCacheKey(lat, lon) {
   return `${ZONE_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
 }
 
+export function makeAlertsCacheKey(lat, lon) {
+  return `${ALERTS_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
+}
+
 // For the handful of plain (non-TTL) localStorage reads/writes elsewhere in
 // the app -- e.g. remembering the last-used ZIP/lookup method -- that don't
 // go through getCacheItem/setCacheItem above. Touching localStorage at all

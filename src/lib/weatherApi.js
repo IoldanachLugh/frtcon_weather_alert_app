@@ -1,4 +1,4 @@
-import { getCacheItem, setCacheItem, makeZoneCacheKey, ZIP_CACHE_PREFIX, ALERTS_CACHE_PREFIX, ALERTS_CACHE_TTL_MS } from "./cache";
+import { getCacheItem, setCacheItem, makeZoneCacheKey, makeAlertsCacheKey, ZIP_CACHE_PREFIX, ALERTS_CACHE_TTL_MS } from "./cache";
 
 export const WEATHER_GOV_BASE = "https://api.weather.gov";
 export const ZIP_API_BASE = "https://api.zippopotam.us/us";
@@ -117,8 +117,17 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
   return value;
 }
 
-export async function getActiveAlertsByZone(zoneId, { signal, skipCache = false } = {}) {
-  const cacheKey = `${ALERTS_CACHE_PREFIX}${zoneId}`;
+export async function getActiveAlertsByPoint(lat, lon, { signal, skipCache = false } = {}) {
+  // Deliberately NOT /alerts/active/zone/{forecastZoneId}: that endpoint
+  // only returns alerts coded to the forecast zone (UGC "xxZnnn"). Some
+  // winter alert types -- Snow Squall Warning among them -- are issued by
+  // county or storm polygon (UGC "xxCnnn") instead, and a zone-only query
+  // silently misses those entirely. /alerts/active?point= matches on the
+  // actual alert geometry/UGC coverage regardless of which kind it is, so
+  // it catches both. Confirmed live: zone-coded county/polygon alerts
+  // (Flash Flood Warning, Flood Advisory, Flood Warning) were absent from
+  // the zone endpoint but present via ?point= for the same coordinates.
+  const cacheKey = makeAlertsCacheKey(lat, lon);
 
   if (!skipCache) {
     const cached = getCacheItem(cacheKey, ALERTS_CACHE_TTL_MS);
@@ -127,7 +136,10 @@ export async function getActiveAlertsByZone(zoneId, { signal, skipCache = false 
     }
   }
 
-  const data = await fetchJson(`${WEATHER_GOV_BASE}/alerts/active/zone/${zoneId}`, { signal });
+  const data = await fetchJson(
+    `${WEATHER_GOV_BASE}/alerts/active?point=${lat},${lon}&status=actual`,
+    { signal }
+  );
   const value = data?.features || [];
 
   setCacheItem(cacheKey, value);
