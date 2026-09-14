@@ -86,7 +86,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
 
 ## P2 — UX / robustness
 
-### 3. No refresh when the app returns to the foreground
+### 3. No refresh when the app returns to the foreground — ✅ FIXED
 
 - **Where:** `src/App.jsx:195-212`.
 - **Problem:** mobile browsers throttle or freeze `setInterval` for
@@ -102,6 +102,27 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   - Show "Updated h:mm a" in the Current FRTCON card.
   - Implement together with #1, since both touch `result` and the refresh
     effect.
+- **Done:** implemented as described.
+  - `src/lib/weatherApi.js` — added `STALE_ON_VISIBLE_MS` (60s).
+  - `src/App.jsx` — `result.fetchedAt` set on every successful fetch; the
+    interval-refresh body was extracted into a shared `refreshAlerts(lat,
+    lon)` callback (bypasses the TTL cache, only applies its result if
+    that location is still the one on screen); a new `visibilitychange`
+    effect calls it immediately when the tab becomes visible and
+    `fetchedAt` is older than `STALE_ON_VISIBLE_MS`; the Current FRTCON
+    card now shows "Updated h:mm a" using `result.fetchedAt`.
+  - `src/styles.css` — added `.frtcon-updated-at` (small, muted).
+  - `npm run lint` and `vite build` both pass.
+  - **Not verified in an actual browser.** Headless Chromium couldn't be
+    launched in this sandbox to drive an interactive check (the only
+    Chromium here is the snap package, which fails with a snap-cgroup
+    error specific to this sandboxed shell — not something fixable from
+    here), and Claude in Chrome was declined for this session. Per the
+    user (2026-09-14), verification relied on lint + build + code review
+    only; a manual check (open the app, use devtools to fast-forward past
+    60s and toggle tab visibility, confirm a refetch and an updated
+    timestamp) is still worth doing before considering this fully
+    confirmed.
 
 ### 4. Raw technical error messages shown to users
 

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./styles.css";
-import { isValidZip, getLatLonFromZip, getZoneByPoint, getActiveAlertsByPoint, ALERTS_AUTO_REFRESH_MS } from "./lib/weatherApi";
+import {
+  isValidZip,
+  getLatLonFromZip,
+  getZoneByPoint,
+  getActiveAlertsByPoint,
+  ALERTS_AUTO_REFRESH_MS,
+  STALE_ON_VISIBLE_MS,
+} from "./lib/weatherApi";
 import { safeGetItem, safeSetItem } from "./lib/cache";
 import { determineFrtcon } from "./lib/frtcon";
 import { SnowOverlay } from "./components/SnowOverlay";
@@ -182,6 +189,7 @@ export default function App() {
         lon,
         zone,
         alerts,
+        fetchedAt: Date.now(),
       });
     } catch (err) {
       if (signal.aborted) return;
@@ -193,33 +201,63 @@ export default function App() {
     }
   }, []);
 
+  // Shared by both refresh paths below (the interval and the
+  // visibilitychange catch-up). Deliberately bypasses the TTL cache
+  // (skipCache: true) rather than waiting for it to expire -- this is live
+  // weather data, so every refresh genuinely hits the network. Only applies
+  // its result if the location it was fetched for is still the one on
+  // screen -- guards against a slow refresh landing after the user has
+  // since searched somewhere else.
+  const refreshAlerts = useCallback((lat, lon) => {
+    return getActiveAlertsByPoint(lat, lon, { skipCache: true })
+      .then((alerts) => {
+        setResult((prev) =>
+          prev && prev.lat === lat && prev.lon === lon ? { ...prev, alerts, fetchedAt: Date.now() } : prev
+        );
+      })
+      .catch(() => {
+        // Silently ignore background refresh failures; the user still has
+        // the last good data and can manually re-search if needed.
+      });
+  }, []);
+
   // Keep alerts fresh for whatever location is currently displayed, without
-  // the user needing to manually re-search. Deliberately bypasses the TTL
-  // cache (skipCache: true below) rather than waiting for it to expire --
-  // this is live weather data, so every tick genuinely hits the network.
-  // Keyed on lat/lon (not zoneId) since alerts are now fetched by point,
-  // not by zone -- see getActiveAlertsByPoint. Note this interval
-  // (ALERTS_AUTO_REFRESH_MS) and the alerts cache TTL (ALERTS_CACHE_TTL_MS
-  // in lib/cache.js) are independently defined but currently equal; if
-  // either is ever tuned, check whether that's still the intended
-  // relationship.
+  // the user needing to manually re-search. Keyed on lat/lon (not zoneId)
+  // since alerts are now fetched by point, not by zone -- see
+  // getActiveAlertsByPoint. Note this interval (ALERTS_AUTO_REFRESH_MS) and
+  // the alerts cache TTL (ALERTS_CACHE_TTL_MS in lib/cache.js) are
+  // independently defined but currently equal; if either is ever tuned,
+  // check whether that's still the intended relationship.
   useEffect(() => {
-    if (result?.lat == null || result?.lon == null) return;
+    if (result?.lat == null || result?.lon == null) return undefined;
+
     const intervalId = setInterval(() => {
-      getActiveAlertsByPoint(result.lat, result.lon, { skipCache: true })
-        .then((alerts) => {
-          setResult((prev) =>
-            prev && prev.lat === result.lat && prev.lon === result.lon ? { ...prev, alerts } : prev
-          );
-        })
-        .catch(() => {
-          // Silently ignore background refresh failures; the user still has
-          // the last good data and can manually re-search if needed.
-        });
+      refreshAlerts(result.lat, result.lon);
     }, ALERTS_AUTO_REFRESH_MS);
 
     return () => clearInterval(intervalId);
-  }, [result?.lat, result?.lon]);
+  }, [result?.lat, result?.lon, refreshAlerts]);
+
+  // Mobile browsers throttle or freeze the setInterval above for background
+  // tabs and suspended/installed PWAs, so it can't be trusted to catch up
+  // promptly when the app is reopened from the background -- how quickly
+  // (if at all) it fires again varies by browser. This app's whole point is
+  // never showing stale alerts, so when the page becomes visible again,
+  // refresh immediately if the data on screen is already stale rather than
+  // waiting on the interval.
+  useEffect(() => {
+    if (result?.lat == null || result?.lon == null) return undefined;
+
+    function onVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      if (result.fetchedAt == null || Date.now() - result.fetchedAt >= STALE_ON_VISIBLE_MS) {
+        refreshAlerts(result.lat, result.lon);
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [result?.lat, result?.lon, result?.fetchedAt, refreshAlerts]);
 
   function handleUseBrowserLocation() {
     setSource("browser");
@@ -477,6 +515,13 @@ export default function App() {
                   {result.alerts.length} active alert{result.alerts.length === 1 ? "" : "s"}
                 </span>
               </div>
+
+              {result.fetchedAt ? (
+                <div className="frtcon-updated-at">
+                  Updated{" "}
+                  {new Date(result.fetchedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </div>
+              ) : null}
 
               <div className="frtcon-title-large">{frtcon.title}</div>
               <p className="body-text">{frtcon.reason}</p>

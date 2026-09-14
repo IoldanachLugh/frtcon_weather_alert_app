@@ -5,6 +5,15 @@ export const ZIP_API_BASE = "https://api.zippopotam.us/us";
 export const FETCH_TIMEOUT_MS = 10000;
 export const ALERTS_AUTO_REFRESH_MS = 5 * 60 * 1000;
 
+// Mobile browsers throttle or freeze setInterval timers for background tabs
+// and suspended/installed PWAs, so ALERTS_AUTO_REFRESH_MS alone can't be
+// trusted to catch up promptly when the app is reopened from the
+// background -- how quickly (if at all) a frozen interval fires again
+// varies by browser. So the app also refreshes on visibilitychange, but
+// only if the data on screen is already at least this stale -- otherwise
+// switching tabs for a couple seconds would trigger a needless refetch.
+export const STALE_ON_VISIBLE_MS = 60 * 1000;
+
 // Note: api.weather.gov asks consumers to identify themselves via a
 // User-Agent header, but that's only practical from server-side code.
 // Browsers won't let a page set a real custom User-Agent: Chrome/Firefox
