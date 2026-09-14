@@ -78,9 +78,28 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   backoff delays escalate correctly, give-up fires and resets the counter
   at attempt 4, the offline path gives up immediately with distinct
   copy, and both the Retry button and the `online` event reset the counter
-  and reload. `npm run lint` and `vite build` both pass. Not yet verified
-  in an actual installed PWA under airplane mode (needs a device;
-  recommend a manual check before relying on it in production).
+  and reload. `npm run lint` and `vite build` both pass.
+  - **Re-verified live in a real browser (2026-09-14)**, now that Claude in
+    Chrome was available: byte-for-byte extracted the exact fallback HTML
+    string `sw.js` generates (via a small Node harness that fakes the SW
+    `self`/`fetch` globals and captures the real `Response` body, rather
+    than hand-copying it) and served it from a local static file server,
+    so the actual shipped script ran in a genuine browser DOM with real
+    `sessionStorage`/`setTimeout`/reloads instead of Node mocks. Confirmed:
+    a `navigator.onLine === false` shim (prepended before the real script,
+    to force that branch without a real outage) gives up immediately with
+    the offline-specific message; the normal path backs off 1.5s → 3s → 6s
+    → 6s across real reloads and then gives up with "Can't reach FRTCON…"
+    and a visible Retry button; a genuine mouse click on that Retry button
+    resets the counter and restarts the backoff; dispatching a real
+    `online` event mid-backoff interrupts the pending timer and restarts
+    from 0 rather than continuing toward give-up.
+  - **Still not verified:** an actual installed PWA under real airplane
+    mode on a device — the above confirms the reconnect script's own logic
+    end-to-end in a browser, but not the service-worker-level `fetch`
+    rejection path specifically (Android cold-start hitting the network
+    stack before it's ready), which needs real hardware to trigger
+    faithfully.
 
 ---
 
@@ -113,16 +132,23 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     card now shows "Updated h:mm a" using `result.fetchedAt`.
   - `src/styles.css` — added `.frtcon-updated-at` (small, muted).
   - `npm run lint` and `vite build` both pass.
-  - **Not verified in an actual browser.** Headless Chromium couldn't be
-    launched in this sandbox to drive an interactive check (the only
-    Chromium here is the snap package, which fails with a snap-cgroup
-    error specific to this sandboxed shell — not something fixable from
-    here), and Claude in Chrome was declined for this session. Per the
-    user (2026-09-14), verification relied on lint + build + code review
-    only; a manual check (open the app, use devtools to fast-forward past
-    60s and toggle tab visibility, confirm a refetch and an updated
-    timestamp) is still worth doing before considering this fully
-    confirmed.
+  - **Verified live in a real browser (2026-09-14)**, now that Claude in
+    Chrome was available (previously blocked -- see below). Ran the app
+    against the real dev server and NWS API for ZIP 55771: did a ZIP
+    lookup, confirmed a real `alerts/active` network request and an
+    "Updated h:mm" timestamp appeared; toggled `document.visibilityState`
+    hidden→visible immediately afterward (data still fresh) and confirmed
+    *no* new network request fired; waited a real 65 seconds (past
+    `STALE_ON_VISIBLE_MS`), toggled visibility again, and confirmed exactly
+    one new `alerts/active` request fired and the displayed timestamp
+    advanced. This is now fully confirmed, superseding the "not verified"
+    note below, which is kept for context on why it wasn't done initially.
+  - Previously: not verified in an actual browser. Headless Chromium
+    couldn't be launched in this sandbox to drive an interactive check
+    (the only Chromium here is the snap package, which fails with a
+    snap-cgroup error specific to this sandboxed shell — not something
+    fixable from here), and Claude in Chrome was declined for that
+    session.
 
 ### 4. Raw technical error messages shown to users — ✅ FIXED
 
@@ -214,17 +240,39 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     back to attempting the lookup exactly as before. Only the *silent*
     auto-resume is affected -- a manual click of "Use Browser Location"
     always still attempts it regardless of this check.
-  - **Verified by hand-tracing** each scenario against the new code (no
-    interactive browser available in this sandbox to click through it
-    live -- see #3's note on the same limitation): permission denied on
-    first try → nothing persisted, no auto-retry next visit; a
-    nonexistent ZIP → same; a failed attempt *after* an earlier success →
-    the earlier good ZIP/source is not clobbered, since persistence only
-    happens in the success branch; permission denied with
-    `frtcon_last_source` still "browser" from a past success → the new
-    Permissions check skips the doomed auto-attempt instead of flashing
-    "Locating you..." right before failing again. `npm run lint` and
-    `vite build` both pass.
+  - `npm run lint` and `vite build` both pass.
+  - **Re-verified live in a real browser (2026-09-14)**, superseding the
+    original hand-traced-only verification (no interactive browser was
+    available in that earlier session -- see #3's note on the same
+    limitation):
+    - Nonexistent ZIP `00000` → friendly error shown, `frtcon_last_zip`/
+      `frtcon_last_source` stay unset; reloading afterward shows a clean
+      slate (no error, no status, empty ZIP field) -- confirms it doesn't
+      silently auto-retry the failing lookup.
+    - A successful ZIP (`55771`) persists `frtcon_last_zip`/`_source`;
+      immediately submitting a failing ZIP (`00000`) afterward leaves that
+      earlier good pair untouched in `localStorage` while still showing
+      the new error -- confirms a later failure doesn't clobber an earlier
+      success.
+    - Manually clicking "Use Browser Location" with `navigator.geolocation
+      .getCurrentPosition` mocked to call back with `PERMISSION_DENIED`
+      shows the permission-denied error and leaves `frtcon_last_source`
+      unset.
+    - The mount-effect Permissions-API skip specifically needed
+      intercepting `navigator.permissions`/`navigator.geolocation` before
+      React's first render, which external page scripts can't win a race
+      against -- so this one was verified by temporarily adding a shim
+      `<script>` to the top of `index.html` (before the app's own
+      `<script type="module">`) that shadows both, reverted immediately
+      after (confirmed clean via `git diff --stat index.html` showing no
+      changes, plus a re-run of lint/build). With `frtcon_last_source`
+      pre-set to `"browser"` in `localStorage` and the shim reporting
+      `state: "denied"`, reloading called `getCurrentPosition` **zero**
+      times and showed no "Locating you..." flash and no error -- the
+      silent auto-resume was correctly skipped. As a control, reporting
+      `state: "prompt"` instead (same reload, same saved source) *did*
+      call `getCurrentPosition`, confirming the skip is conditional on the
+      reported state rather than a check that always skips.
 
 ### 6. Focus isn't restored after closing a modal opened from the menu — ✅ FIXED
 
