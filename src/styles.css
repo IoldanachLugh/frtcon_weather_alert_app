@@ -121,7 +121,7 @@ div[role="dialog"] {
   background: #0b1f3a;
   color: #e5ecf5;
   font-family: Arial, Helvetica, sans-serif;
-  padding: 24px;
+  padding: 19px;
   box-sizing: border-box;
   border: none;
   /* Intentional: the app's general text/content is center-aligned. This
@@ -156,7 +156,7 @@ div[role="dialog"] {
   background: #122b4dc0;
   border: 1px solid #27466f;
   border-radius: 18px;
-  padding: 24px;
+  padding: 19px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -254,7 +254,7 @@ div[role="dialog"] {
   background: #122b4dc0;
   border: 1px solid #27466f;
   border-radius: 18px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -343,7 +343,7 @@ div[role="dialog"] {
 .frtcon-status-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -361,8 +361,24 @@ div[role="dialog"] {
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
+}
+
+.frtcon-status-row > .frtcon-badge {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.frtcon-status-row > .alert-tag {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.frtcon-status-row > .share-fb-button {
+  gap: 6px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .frtcon-status-row > .share-fb-button {

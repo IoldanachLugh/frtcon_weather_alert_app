@@ -658,7 +658,7 @@ export default function App() {
               <div className="frtcon-status-row">
                 <FrtconBadge level={frtcon.level} />
                 <span className="alert-tag">
-                  {result.alerts.length} active alert{result.alerts.length === 1 ? "" : "s"}
+                  {result.alerts.length} alert{result.alerts.length === 1 ? "" : "s"}
                 </span>
                 <button
                   type="button"
