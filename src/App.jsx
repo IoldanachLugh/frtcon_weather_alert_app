@@ -9,7 +9,8 @@ import {
   STALE_ON_VISIBLE_MS,
 } from "./lib/weatherApi";
 import { safeGetItem, safeSetItem } from "./lib/cache";
-import { determineFrtcon } from "./lib/frtcon";
+import { determineFrtcon, pickRandomItems } from "./lib/frtcon";
+import { alertMessages } from "./data/alertMessages";
 import { SnowOverlay } from "./components/SnowOverlay";
 import { FrtconBadge } from "./components/FrtconBadge";
 import { FrtconMessage } from "./components/FrtconMessage";
@@ -29,6 +30,7 @@ export default function App() {
   const [iosHelpOpen, setIosHelpOpen] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [shareToast, setShareToast] = useState("");
 
   // iOS never fires beforeinstallprompt and never will (no such API exists
   // in WebKit) -- this is a one-time UA check, not something that changes
@@ -109,6 +111,13 @@ export default function App() {
 
   const menuButtonRef = useRef(null);
   const dropdownRef = useRef(null);
+  const shareToastTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareToastTimeoutRef.current) clearTimeout(shareToastTimeoutRef.current);
+    };
+  }, []);
 
   // Keyboard support for the hamburger dropdown, matching what the modals
   // already do: Escape closes it (and returns focus to the button that
@@ -153,6 +162,23 @@ export default function App() {
   const frtcon = useMemo(() => {
     return result?.alerts ? determineFrtcon(result.alerts) : null;
   }, [result]);
+
+  // Computed here (rather than inside FrtconMessage) so the Share button can
+  // reuse the exact headline/title/commentary lines already on screen,
+  // instead of calling pickRandomItems a second time and sharing a
+  // different random selection than what the user is actually looking at.
+  // Re-randomizes only when the level itself changes, not on every
+  // background refresh that leaves the level unchanged.
+  const frtconMessage = useMemo(() => {
+    if (!frtcon) return null;
+    const message = alertMessages[frtcon.level] || alertMessages[5];
+    return {
+      headline: message.headline,
+      title: message.title,
+      lines: pickRandomItems(message.body, 4),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frtcon?.level]);
 
   const snowCount = frtcon
     ? {
@@ -369,6 +395,63 @@ export default function App() {
     );
   }
 
+  // Facebook's sharer.php dialog only accepts a URL, not custom text/quote
+  // parameters (see CONTEXT.md), so there's no way to make the resulting
+  // post auto-populate with the FRTCON status. Instead, this copies the
+  // status text to the clipboard and opens the sharer in a new tab, so the
+  // user can paste it into the post once they get there.
+  function handleShare() {
+    if (!frtcon || !frtconMessage || !result?.zone) return;
+
+    // Mirrors exactly what's rendered in the .frtcon-condition-status box
+    // (FrtconMessage) -- headline, title, and the same randomized
+    // commentary lines currently on screen -- rather than the shorter
+    // frtcon.title/frtcon.reason summary shown above it. No URL here --
+    // the sharer.php dialog already attaches frtcon.com as a link card via
+    // its own `u` param, so repeating it as plain text in the pasted body
+    // would just duplicate it.
+    const shareText = [
+      `${frtconMessage.headline} - ${result.zone.zoneName} is currently at French Toast Condition #${frtcon.level}.`,
+      frtconMessage.title,
+      ...frtconMessage.lines,
+    ].join("\n");
+
+    if (shareToastTimeoutRef.current) clearTimeout(shareToastTimeoutRef.current);
+
+    const showToast = (message) => {
+      setShareToast(message);
+      shareToastTimeoutRef.current = setTimeout(() => setShareToast(""), 5000);
+    };
+
+    // window.open() can shift focus to the new tab, and Chrome's
+    // auto-granted (silent) clipboard write only takes that fast path
+    // while this document still has focus -- once focus moves, a write
+    // falls back to an explicit permission prompt instead. So the write
+    // has to happen first, while frtcon.com still definitely has focus,
+    // with window.open() following it. The write itself resolves almost
+    // instantly, well within the few seconds a click's "user activation"
+    // stays valid, so this doesn't risk window.open() getting popup-blocked.
+    const openFacebook = () => {
+      window.open("https://www.facebook.com/sharer/sharer.php?u=https://frtcon.com", "_blank", "noopener,noreferrer");
+    };
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(shareText)
+        .then(() => {
+          openFacebook();
+          showToast("Copied! Paste it into your Facebook post.");
+        })
+        .catch(() => {
+          openFacebook();
+          showToast("Couldn't copy automatically — copy your FRTCON status before posting.");
+        });
+    } else {
+      openFacebook();
+      showToast("Couldn't copy automatically — copy your FRTCON status before posting.");
+    }
+  }
+
   const performZipLookup = useCallback(
     async (zipValue) => {
       if (!isValidZip(zipValue)) {
@@ -572,13 +655,57 @@ export default function App() {
         {result && frtcon ? (
           <div className="section-stack">
             <div className="card section-spacing">
-              <h2 className="card-title">Current FRTCON</h2>
               <div className="frtcon-status-row">
                 <FrtconBadge level={frtcon.level} />
                 <span className="alert-tag">
                   {result.alerts.length} active alert{result.alerts.length === 1 ? "" : "s"}
                 </span>
+                <button
+                  type="button"
+                  className="share-fb-button"
+                  onClick={handleShare}
+                  aria-label="Share on Facebook"
+                >
+                  <svg className="share-fb-icon" viewBox="0 0 320 512" aria-hidden="true" focusable="false">
+                    <path
+                      fill="currentColor"
+                      d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"
+                    />
+                  </svg>
+                  <svg
+                    className="share-fb-arrow"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <path d="M4 17v-3a4 4 0 0 1 4-4h11" />
+                    <path d="M14 5l5 5-5 5" />
+                  </svg>
+                  <span className="share-fb-label">Share</span>
+                </button>
               </div>
+
+              {shareToast ? (
+                <span className="share-toast" role="status" aria-live="polite">
+                  {shareToast}
+                </span>
+              ) : null}
+
+              <FrtconMessage
+                level={frtcon.level}
+                zoneName={result.zone.zoneName}
+                headline={frtconMessage.headline}
+                title={frtconMessage.title}
+                lines={frtconMessage.lines}
+              />
+
+              <div className="frtcon-title-large">{frtcon.title}</div>
+              <p className="body-text">{frtcon.reason}</p>
 
               {result.fetchedAt ? (
                 <div className="frtcon-updated-at">
@@ -586,11 +713,6 @@ export default function App() {
                   {new Date(result.fetchedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                 </div>
               ) : null}
-
-              <div className="frtcon-title-large">{frtcon.title}</div>
-              <p className="body-text">{frtcon.reason}</p>
-
-              <FrtconMessage level={frtcon.level} zoneName={result.zone.zoneName} />
 
               {frtcon.matchingAlerts.length > 0 ? (
                 <div className="frtcon-matching-alerts">

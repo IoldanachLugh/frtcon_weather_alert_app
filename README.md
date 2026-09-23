@@ -20,6 +20,11 @@ Live at [frtcon.com](https://frtcon.com).
   driving the FRTCON score.
 - Has a printable recipe modal (Jeff's French Toast recipe) that prints
   cleanly on its own, independent of the rest of the page.
+- Has a "Share" button (Facebook-blue, next to the alert count) that copies
+  the on-screen FRTCON condition text to the clipboard and opens Facebook's
+  share dialog in a new tab, so the user pastes the text into their post.
+  Facebook's `sharer.php` only accepts a URL (no custom text), which is why
+  the text goes via clipboard; the link card comes from the `u` param.
 - Installable as a home-screen app on Android (via the in-app "Install App"
   menu item) and iOS (via a guided "Add to Home Screen" flow, since iOS has
   no programmatic install API).
@@ -166,12 +171,9 @@ be the right place to add proper NWS attribution.
 
 ## Ideas for later (not yet built)
 
-- **Share button**: let visitors share their current FRTCON condition —
-  Web Share API on mobile (carries the actual condition text + a link),
-  with a fallback on desktop. Note going in: Facebook's `sharer.php` share
-  dialog only accepts a URL, not custom text/quote parameters, so a desktop
-  fallback can't post the actual condition text to Facebook directly — plan
-  on a plain link share plus a clipboard copy of the condition text instead.
+- **Web Share API on mobile**: the Facebook Share button (see "What it
+  does") covers the desktop-style flow; a native share sheet on mobile
+  (carrying the condition text + a link directly) is not built.
 - **Server-rendered share previews**: accept ZIP/coordinates as URL
   parameters, render the initial page server-side with those inputs, and
   set Open Graph meta tags to match — so a shared link shows an accurate,

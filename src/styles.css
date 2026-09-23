@@ -342,10 +342,31 @@ div[role="dialog"] {
 
 .frtcon-status-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* Badge, alert-count tag, and Share button share one height/font size and
+   are centered on the same line. .alert-tag's own margins (meant for
+   wrapped tag lists elsewhere) are zeroed here since the row's gap handles
+   spacing -- its margin-bottom otherwise pushes it ~4px off-center. */
+.frtcon-status-row > .frtcon-badge,
+.frtcon-status-row > .alert-tag,
+.frtcon-status-row > .share-fb-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.frtcon-status-row > .share-fb-button {
+  border-radius: 999px;
 }
 
 .frtcon-updated-at {
@@ -359,6 +380,41 @@ div[role="dialog"] {
   font-size: 24px;
   font-weight: bold;
   color: #ffffff;
+}
+
+.share-fb-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1877f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.share-fb-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.share-fb-arrow {
+  width: 18px;
+  height: 18px;
+}
+
+.share-fb-label {
+  line-height: 1;
+}
+
+.share-toast {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #93a5c4;
 }
 
 .frtcon-badge {

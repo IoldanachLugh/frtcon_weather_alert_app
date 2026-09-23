@@ -111,6 +111,22 @@ infrastructure decisions.
   re-failed on every later visit — a manual click of "Use Browser
   Location" is unaffected either way.)
 
+- **Facebook Share button** (`handleShare` in `App.jsx`). Facebook's
+  `sharer.php` accepts only a URL, so the button copies the text to the
+  clipboard and opens `sharer.php?u=https://frtcon.com` in a new tab; the
+  user pastes. Decisions: (1) the copied text is exactly what the
+  `.frtcon-condition-status` box shows (headline, title, the same random
+  commentary lines) -- so the random line selection lives in `App.jsx`
+  (`frtconMessage`), not inside `FrtconMessage`, so share and display can't
+  diverge; footnote omitted. (2) No URL in the copied text -- the link card
+  already carries it. (3) Clipboard write runs *before* `window.open()`:
+  opening the tab first shifted focus and made Chrome show a "wants to see
+  text and images copied to the clipboard" permission prompt. (4) Toast
+  after, not a confirm dialog before -- user's choice, to avoid an extra
+  click. (5) Plain text only: no way to bold the headline on Facebook
+  (Unicode-bold trick was offered and declined). The "f" icon is a
+  hand-built SVG, not Meta's official brand asset.
+
 ## Known gotchas (things that already bit us once)
 
 - **Never set a custom `User-Agent` header on `fetch()` calls to
@@ -170,13 +186,9 @@ infrastructure decisions.
 
 ## Shelved for later (not started, but scoped)
 
-- **Share button.** Let visitors share their current FRTCON condition.
-  Agreed shape: Web Share API on mobile (carries the actual condition
-  text + a link), since Facebook's `sharer.php` share dialog only accepts
-  a URL and not custom text/quote parameters — so a desktop fallback
-  can't post the real condition text to Facebook directly; plan on a
-  plain link share plus a clipboard copy of the condition text instead.
-  Not yet implemented anywhere in the codebase.
+- **Web Share API on mobile** (native share sheet carrying condition text +
+  link). The Facebook Share button itself is built (see below); this
+  mobile variant is not.
 - **Server-rendered share previews.** Agreed shape: accept ZIP or
   coordinates as URL parameters, server-render the initial page using
   those inputs, and set Open Graph meta tags to match the resulting

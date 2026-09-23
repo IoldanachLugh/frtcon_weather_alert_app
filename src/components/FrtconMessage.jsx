@@ -1,18 +1,11 @@
-import { useMemo } from "react";
-import { alertMessages } from "../data/alertMessages";
-import { pickRandomItems } from "../lib/frtcon";
-
-export function FrtconMessage({ level, zoneName }) {
-  const message = alertMessages[level] || alertMessages[5];
-  const selectedLines = useMemo(() => pickRandomItems(message.body, 4), [message.body]);
-
+export function FrtconMessage({ level, zoneName, headline, title, lines }) {
   return (
     <div className="frtcon-condition-status">
       <div className="frtcon-condition-headline">
-        {message.headline} - {zoneName} is currently at French Toast Condition #{level}.
+        {headline} - {zoneName} is currently at French Toast Condition #{level}.
       </div>
-      <div className="frtcon-condition-title">{message.title}</div>
-      {selectedLines.map((line, index) => (
+      <div className="frtcon-condition-title">{title}</div>
+      {lines.map((line, index) => (
         <p key={index} className="frtcon-condition-line">
           {line}
         </p>
