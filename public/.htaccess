@@ -1,0 +1,23 @@
+# Deployed with the rest of dist/ (Apache vhost has AllowOverride All).
+# Everything is wrapped in <IfModule> so a missing module degrades to "feature
+# absent" rather than a 500 for the whole site.
+
+# Markdown for agents: serve /index.md for the homepage when the client asks
+# for text/markdown. Everyone else still gets the SPA's index.html.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Accept} text/markdown
+  RewriteRule ^$ index.md [L]
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType "text/markdown; charset=utf-8" .md
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Discovery links (RFC 8288). No api-catalog: the app has no API of its own.
+  Header always set Link "</sitemap.xml>; rel=\"sitemap\"; type=\"application/xml\""
+  Header always append Link "</index.md>; rel=\"alternate\"; type=\"text/markdown\""
+  # The homepage varies by Accept, so caches must not mix the two.
+  Header append Vary Accept
+</IfModule>

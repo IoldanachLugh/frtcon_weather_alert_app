@@ -136,6 +136,13 @@ in place for full functionality:
   blank-looking offline interstitial — see `public/sw.js` for the
   retry/give-up logic.
 
+- **Crawler/agent files** in `public/`: `robots.txt` (content signals + AI
+  crawler rules), `sitemap.xml`, `index.md` (served for `Accept:
+  text/markdown` on `/`), and `.htaccess` (that rewrite plus `Link`
+  headers; requires Apache `mod_rewrite`/`mod_headers` and `AllowOverride
+  All`). Note `.htaccess` is a dotfile — copy `dist/` with something that
+  includes hidden files (e.g. `cp -a dist/. target/`, not `dist/*`).
+
 - **File permissions matter.** Static assets need to be world-readable by
   whatever user your web server runs as (e.g. `www-data`) — files left at
   owner-only permissions will fail to serve with no obvious error, which

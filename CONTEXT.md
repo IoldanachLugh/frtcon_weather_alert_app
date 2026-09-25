@@ -127,6 +127,29 @@ infrastructure decisions.
   (Unicode-bold trick was offered and declined). The "f" icon is a
   hand-built SVG, not Meta's official brand asset.
 
+## Agent readiness (added 2026-09-25, after a Cloudflare agent-readiness scan)
+
+The scan flagged: no robots.txt, sitemap, Link headers, AI-discovery DNS,
+markdown negotiation, AI crawler rules, or content signals. Addressed in
+`public/` (ships with `dist/`):
+
+- `robots.txt` -- `Content-Signal: search=yes, ai-input=yes, ai-train=no`,
+  explicit `Disallow` for known training crawlers (GPTBot, ClaudeBot, CCBot,
+  Google-Extended, Bytespider, Applebot-Extended, meta-externalagent), and a
+  `Sitemap:` line. The ai-train=no stance is the owner's policy call; flip
+  it there if that changes.
+- `sitemap.xml` -- just `/` (single-page app).
+- `index.md` + `.htaccess` -- `Accept: text/markdown` on `/` rewrites to
+  `index.md` (mod_rewrite), with `Vary: Accept`; `Link` headers advertise
+  the sitemap and the markdown alternate. `.htaccess` works because the
+  vhost has `AllowOverride All`; every block is `<IfModule>`-guarded. Tested
+  against a scratch Apache with curl. There's deliberately no `api-catalog`
+  Link: the app has no API of its own.
+- **Not done (outside the repo):** AI-discovery DNS records live in the
+  Cloudflare zone, and Cloudflare's own "Markdown for Agents"/managed
+  robots.txt/AI-crawler toggles are dashboard settings. If Cloudflare's
+  managed robots.txt is ever enabled it may prepend/override the file above.
+
 ## Known gotchas (things that already bit us once)
 
 - **Never set a custom `User-Agent` header on `fetch()` calls to
