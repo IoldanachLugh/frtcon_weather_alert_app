@@ -12,7 +12,9 @@ Live at [frtcon.com](https://frtcon.com).
 - Looks up active NWS winter weather alerts for your location, either via
   browser geolocation or a manually entered ZIP code.
 - Classifies the most severe active alert into a 5-level FRTCON scale (see
-  below), with a randomized bit of commentary per level.
+  below), with a randomized bit of commentary per level. With no winter
+  alert, 1 inch or more of forecast snow (or any ice) in the next 48 hours
+  makes it FRTCON 4 rather than 5.
 - Remembers whichever method (location or ZIP) you used last, and
   automatically re-runs it on your next visit — no need to click a button
   again.
@@ -26,6 +28,19 @@ Live at [frtcon.com](https://frtcon.com).
   browser's own terse error text.
 - Lists every raw active NWS alert covering your location, not just the one
   driving the FRTCON score.
+- Has a collapsible "48-hour winter outlook" under the alerts: the next 48
+  hours of NWS's gridpoint forecast as three small charts sharing one time
+  axis and one hover readout -- snow and ice (NWS's total per forecast
+  period, usually 6 hours, drawn as blocks spanning that period),
+  temperature (°F, with a 32°F freezing line), and chance of precipitation
+  colored by the type NWS expects (rain, snow, or sleet -- which also covers
+  freezing rain and freezing drizzle; a
+  mix takes the most hazardous, and the hover readout names every type)
+  -- plus the 48-hour snow/ice totals and a collapsed "Details" table view.
+  The forecast is loaded with every lookup (its totals feed the 5-vs-4
+  rule above); the chart is drawn with
+  [uPlot](https://github.com/leeoniya/uPlot), downloaded as a separate
+  ~24 KB (gzipped) chunk only when the panel is opened.
 - Has a printable recipe modal (Jeff's French Toast recipe) that prints
   cleanly on its own, independent of the rest of the page.
 - Has a "Share" button (Facebook-blue, next to the alert count) that copies
@@ -44,8 +59,8 @@ Live at [frtcon.com](https://frtcon.com).
 | **1** | Severe — stay inside, this is not a drill | Blizzard Warning, Ice Storm Warning, Heavy Freezing Spray Warning, Winter Storm Warning w/ significant ice |
 | **2** | Major weather warning active | Winter Storm Warning, Lake Effect Snow Warning, Snow Squall Warning, Freezing Rain Warning, Extreme Cold Warning |
 | **3** | Moderate impacts active | Winter Weather Advisory, Freezing Fog/Rain Advisory, Snow/Blowing Snow Advisory, Cold Weather Advisory |
-| **4** | Being watched, no major impacts yet | Winter Storm/Blizzard/Lake Effect Snow/Ice Storm/Extreme Cold/Freeze Watch, Heavy Freezing Spray Watch, Frost Advisory, Freeze Warning |
-| **5** | All clear | No active alerts, or active alerts unrelated to winter weather |
+| **4** | Being watched, no major impacts yet | Winter Storm/Blizzard/Lake Effect Snow/Ice Storm/Extreme Cold/Freeze Watch, Heavy Freezing Spray Watch, Frost Advisory, Freeze Warning — **or** no winter alert, but ≥1 in of snow or any ice forecast in the next 48 hours |
+| **5** | All clear | No winter alerts (none at all, or only unrelated ones) and less than 1 in of snow and no ice forecast |
 
 Classification is done via keyword matching against each alert's `event`
 field (see `src/lib/frtcon.js`) — NWS draws `event` from a fixed, published
@@ -58,6 +73,19 @@ possible for an unusual event string to be missed. When multiple winter
 alerts are active at once, the **most severe** (lowest-numbered) level
 wins, but every matching alert is listed under "Winter alerts driving the
 score."
+
+**The one forecast-based rule.** Alerts alone would leave a place at
+FRTCON 5 ("all clear") with snow on the way whenever the amount is too
+routine locally for NWS to issue an advisory -- e.g. an inch in Fairbanks,
+where NWS put out only a Special Weather Statement. So when no winter alert
+is active and NWS's gridpoint forecast totals **1 inch or more of snow, or
+any ice accumulation, in the next 48 hours**, the level is 4 instead of 5,
+shown as "Forecast driving the score". The forecast never raises anything
+above 4 and never overrides an alert: levels 1-3 still come only from
+alerts, which NWS calibrates to what's normal in each area (the same inch
+in Atlanta usually does get an advisory, so it scores 3 there). If the
+forecast fails to load, scoring falls back to alerts only. See
+`determineFrtcon` in `src/lib/frtcon.js`.
 
 ## Tech stack
 
@@ -85,6 +113,8 @@ src/
     frtcon.test.js           — vitest suite for the above
     geolocationError.js      — plain-language browser-geolocation errors and
                                 the lookup timeouts (+ geolocationError.test.js)
+    winterOutlook.js         — turns NWS gridpoint layers into the outlook
+                                chart's data (+ winterOutlook.test.js)
   data/
     alertMessages.js          — the FRTCON 1–5 headline/title/commentary content
     recipe.js                 — Jeff's French Toast recipe content
@@ -96,6 +126,8 @@ src/
     FrtconBadge.jsx
     FrtconMessage.jsx          — the condition status box
     AlertCard.jsx
+    WinterOutlookPanel.jsx     — the collapsible 48-hour winter outlook
+    WinterOutlookChart.jsx     — its three synced uPlot charts (lazy-loaded)
     RecipeModal.jsx
     IOSInstallHelp.jsx
 ```
@@ -169,8 +201,11 @@ in place for full functionality:
 ## APIs used
 
 - **[api.weather.gov](https://www.weather.gov/documentation/services-web-api)**
-  (National Weather Service) — zone lookup and active alerts. No API key
-  required.
+  (National Weather Service) — zone lookup and active alerts, plus (only
+  while the winter outlook panel is open) the raw gridpoint forecast's
+  temperature, chance of precipitation, expected precipitation type
+  (`weather`), snowfall and ice accumulation. No
+  API key required.
 - **[api.zippopotam.us](https://www.zippopotam.us/)** — ZIP code → lat/lon
   lookup, used as an alternative to browser geolocation. No API key
   required.
@@ -195,12 +230,6 @@ be the right place to add proper NWS attribution.
 
 ## Ideas for later (not yet built)
 
-- **Sources panel with a 48-hour winter chart** (from the soupcon.org
-  fork, which has a rain/cloud version built with uPlot): NWS's raw
-  gridpoint data has hourly snowfall, ice accumulation, temperature and
-  precipitation chance, so a display-only outlook could show what's coming
-  before any alert is issued. Needs a FRTCON-specific design choice of what
-  to plot; not started.
 - **Worldwide lookups** (soupcon uses Open-Meteo outside the US): the
   plumbing would port, but Open-Meteo has no alerts, so non-US FRTCON would
   need a second, forecast-based scale. Also note Open-Meteo's free tier is

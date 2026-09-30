@@ -3,6 +3,12 @@ export const ZIP_CACHE_PREFIX = "frtcon_zip_lookup_";
 export const ZONE_CACHE_PREFIX = "frtcon_zone_lookup_";
 export const ALERTS_CACHE_PREFIX = "frtcon_alerts_";
 export const ALERTS_CACHE_TTL_MS = 5 * 60 * 1000;
+// The 48-hour winter outlook chart (display only, not part of the score):
+// the gridpoint URL from /points is as stable as the zone lookup, while the
+// forecast grid itself is regenerated roughly hourly.
+export const GRID_URL_CACHE_PREFIX = "frtcon_grid_url_";
+export const OUTLOOK_CACHE_PREFIX = "frtcon_outlook_";
+export const OUTLOOK_CACHE_TTL_MS = 30 * 60 * 1000;
 
 export function getCacheItem(key, ttlMs = CACHE_TTL_MS) {
   try {
@@ -43,6 +49,14 @@ export function makeAlertsCacheKey(lat, lon) {
   return `${ALERTS_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
 }
 
+export function makeGridUrlCacheKey(lat, lon) {
+  return `${GRID_URL_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
+}
+
+export function makeOutlookCacheKey(lat, lon) {
+  return `${OUTLOOK_CACHE_PREFIX}${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
+}
+
 // getCacheItem only evicts an expired entry when that exact key is read
 // again -- a zone/alerts cache key for a location the user never revisits
 // just sits in localStorage forever. Harmless individually, but with one
@@ -52,6 +66,8 @@ const TTL_MS_BY_PREFIX = {
   [ZIP_CACHE_PREFIX]: CACHE_TTL_MS,
   [ZONE_CACHE_PREFIX]: CACHE_TTL_MS,
   [ALERTS_CACHE_PREFIX]: ALERTS_CACHE_TTL_MS,
+  [GRID_URL_CACHE_PREFIX]: CACHE_TTL_MS,
+  [OUTLOOK_CACHE_PREFIX]: OUTLOOK_CACHE_TTL_MS,
 };
 
 export function sweepExpiredCache() {

@@ -1,4 +1,14 @@
-import { getCacheItem, setCacheItem, makeZoneCacheKey, makeAlertsCacheKey, ZIP_CACHE_PREFIX, ALERTS_CACHE_TTL_MS } from "./cache";
+import {
+  getCacheItem,
+  setCacheItem,
+  makeZoneCacheKey,
+  makeAlertsCacheKey,
+  makeGridUrlCacheKey,
+  makeOutlookCacheKey,
+  ZIP_CACHE_PREFIX,
+  ALERTS_CACHE_TTL_MS,
+  OUTLOOK_CACHE_TTL_MS,
+} from "./cache";
 
 export const WEATHER_GOV_BASE = "https://api.weather.gov";
 export const ZIP_API_BASE = "https://api.zippopotam.us/us";
@@ -158,6 +168,12 @@ export async function getZoneByPoint(lat, lon, { signal } = {}) {
     const message = friendlyMessage(err, "This location isn't covered by the National Weather Service.");
     throw message ? new Error(message) : err;
   }
+  // The same /points response carries the gridpoint forecast URL the
+  // winter outlook needs (getWinterOutlook) -- cache it now so that lookup,
+  // which runs right after this one, doesn't request /points again.
+  if (pointData?.properties?.forecastGridData) {
+    setCacheItem(makeGridUrlCacheKey(lat, lon), pointData.properties.forecastGridData);
+  }
   const zoneUrl = pointData?.properties?.forecastZone;
   const zoneId = extractZoneIdFromUrl(zoneUrl);
 
@@ -216,6 +232,64 @@ export async function getActiveAlertsByPoint(lat, lon, { signal, skipCache = fal
   }
   const value = data?.features || [];
 
+  setCacheItem(cacheKey, value);
+  return value;
+}
+
+// The raw gridpoint layers behind the 48-hour winter outlook: its chart
+// (WinterOutlookPanel), and the forecast snow/ice totals that can lift a
+// no-alert FRTCON 5 to 4 (determineFrtcon). Fetched with every lookup,
+// right after getZoneByPoint (which caches the grid URL). Returns each
+// layer's `uom` and raw `values` (ISO 8601 intervals); lib/winterOutlook.js
+// turns them into chart data and totals. Only these layers are kept (the
+// full response is ~175 KB, ~10 KB gzipped), so the cached copy stays small.
+// `weather` (the expected precipitation type per period) colors the
+// chance-of-precipitation chart; only its type/coverage/intensity are kept,
+// since each condition also carries visibility and other attributes.
+export const OUTLOOK_LAYERS = ["temperature", "probabilityOfPrecipitation", "snowfallAmount", "iceAccumulation", "weather"];
+
+function trimWeatherValues(values) {
+  return values.map(({ validTime, value }) => ({
+    validTime,
+    value: (value ?? []).map(({ coverage, weather, intensity }) => ({ coverage, weather, intensity })),
+  }));
+}
+
+async function getGridDataUrl(lat, lon, { signal } = {}) {
+  const cacheKey = makeGridUrlCacheKey(lat, lon);
+  const cached = getCacheItem(cacheKey);
+  if (cached) return cached;
+
+  const pointData = await fetchJson(`${WEATHER_GOV_BASE}/points/${lat},${lon}`, { signal });
+  const url = pointData?.properties?.forecastGridData;
+  if (!url) {
+    throw new Error("Could not determine the NWS forecast grid for this location.");
+  }
+  setCacheItem(cacheKey, url);
+  return url;
+}
+
+export async function getWinterOutlook(lat, lon, { signal } = {}) {
+  const cacheKey = makeOutlookCacheKey(lat, lon);
+  const cached = getCacheItem(cacheKey, OUTLOOK_CACHE_TTL_MS);
+  // Entries cached before the `weather` layer was added lack it; refetch.
+  if (cached?.weather) return cached;
+
+  let data;
+  try {
+    const url = await getGridDataUrl(lat, lon, { signal });
+    data = await fetchJson(url, { signal });
+  } catch (err) {
+    const message = friendlyMessage(err);
+    throw message ? new Error(message) : err;
+  }
+
+  const props = data?.properties ?? {};
+  const value = {};
+  for (const layer of OUTLOOK_LAYERS) {
+    const values = props[layer]?.values ?? [];
+    value[layer] = { uom: props[layer]?.uom ?? null, values: layer === "weather" ? trimWeatherValues(values) : values };
+  }
   setCacheItem(cacheKey, value);
   return value;
 }

@@ -819,6 +819,213 @@ started; both are listed under "Ideas for later" in README.md.
   frtcon.com's `robots.txt` is served as written, i.e. Cloudflare's managed
   robots.txt (enabled on the soupcon.org zone) is not on for this zone.
 
+## Features
+
+### 19. 48-hour winter outlook chart — ✅ FIXED
+
+- **Ask (per owner, 2026-09-30):** adapt soupcon's Sources chart for FRTCON,
+  plotting snowfall, temperature and chance of precipitation from NWS's
+  gridpoint data. Leave the location label (the NWS zone name) alone.
+- **Changed from what was proposed, and why:**
+  - **Three stacked charts instead of one.** The proposal was one chart
+    (snowfall bars, a temperature line and a chance-of-precipitation
+    area), which needs three y-scales. Split into three small charts on
+    one time axis with a synced hover instead.
+  - **Snow as per-period blocks, not hourly bars.** Probed live: NWS gives
+    `snowfallAmount` as 6-hour totals (Fairbanks: 20.32 mm in one 6 h
+    block). Soupcon's `expandGridValues` repeats a value across its
+    interval, which would have multiplied these by 6, and hourly bars
+    would imply a timing NWS doesn't forecast. Each period is drawn as one
+    block at its total. Ice accumulation was added the same way, since
+    freezing rain drives FRTCON 1-2.
+- **Done:**
+  - `src/lib/winterOutlook.js` (pure): `gridPeriods` parses ISO 8601
+    intervals; `buildOutlook(raw, now)` returns 48 hourly slots from the
+    current hour. Temperature and chance of precipitation are repeated per
+    hour; snow and ice carry their period's total. It also returns the
+    periods overlapping the window and their totals (a period already
+    under way counts in full). Converts °C→°F and mm→in. `formatSnow`
+    rounds to 0.1 in, `formatIce` to 0.01 in.
+  - `getWinterOutlook` in `weatherApi.js`: `/points` → `forecastGridData`,
+    keeping only the four layers. Cached under `frtcon_grid_url_` (1 h)
+    and `frtcon_outlook_` (30 min), both added to `sweepExpiredCache`.
+    Uses the same friendly-error handling as the other lookups.
+  - `WinterOutlookPanel.jsx`: a collapsible "48-hour winter outlook" under
+    Active Alerts, collapsed by default. Fetches only while open and
+    refetches on each main refresh (a failed refresh keeps the last data).
+    Loaded data is tagged with its location. Shows a note that it's
+    reference only, the 48-hour snow/ice totals (or "No snow or ice..."),
+    the chart, and a collapsed "Details" table view (amount periods, then
+    every hour).
+  - `WinterOutlookChart.jsx` (`React.lazy`, uPlot ^1.6.32, ~24 KB gzipped
+    separate chunk): three synced uPlot charts with no uPlot legends and
+    one readout line, e.g. "Thu 2 AM: 34°F, 49% chance of precipitation.
+    Snow 0.1 in (2 AM-8 AM), ice 0.25 in (12 AM-6 AM)."
+    - Snow and ice use stepped blocks, with an HTML legend (swatch plus
+      text).
+    - Temperature always keeps 32°F in range, with a dashed, labeled
+      freezing line.
+    - Chance of precipitation is a stepped area from 0-100%.
+    - Colors are dataviz palette dark slots 1-2, validated on `#122b4d`
+      with the skill's validator (all checks pass).
+  - `App.jsx` renders the panel. Styles are under a new
+    `.outlook-*` section in `styles.css`.
+  - Tests: `winterOutlook.test.js` (9) and 2 `getWinterOutlook` tests in
+    `weatherApi.test.js`. 60/60 pass; lint and build pass.
+- **Verified in headless Chrome** (`vite preview`, live NWS):
+  - Fairbanks, which had snow forecast:
+    - Neither uPlot's chunk nor `/gridpoints/` is requested until the
+      panel is opened.
+    - Totals read "1.0 in of snow". The Details table matches the NWS
+      periods (0.1 / 0.8 / 0.1 in).
+    - Hovering any chart moves all three cursors to the same x and fills
+      the readout; moving away resets it.
+    - At 390 px there's no horizontal overflow and all three plot areas
+      are the same width.
+  - Switching to ZIP 55771 keeps the panel open and shows that place's
+    "No snow or ice..." line.
+  - Ice: injected into the gridpoint response by request interception.
+    Totals, orange blocks, the readout and Details are all correct.
+  - Screenshots checked at 900 and 390 px.
+- **Found and fixed by that check:**
+  - The bottom chart's plot area was 25 px narrower (uPlot made room for
+    its last time label), so hover lined up with different hours. Fixed
+    by giving all three charts the same padding.
+  - The "0 in" label was clipped on the upper charts.
+  - An all-zero ice series drew an orange line over the snow's zero
+    baseline. It's now hidden, with the legend reading
+    "Ice (none forecast)".
+  - The readout labeled ice with the snow period's hours. Each now gets
+    its own range.
+  - Vertical time gridlines were added to the upper charts.
+- **Not verified:** touch interaction on a real phone (uPlot's default
+  touch handling, as in soupcon), and real-world ice (only injected).
+  Wind chill was left out of scope.
+
+### 20. Rain (and precipitation type) on the outlook chart — ✅ FIXED
+
+- **Ask (per owner, 2026-09-30):** include rain on the outlook chart, "even
+  if it is just changing the color of the bar." Before this, snow and ice
+  amounts were charted, and the chance-of-precipitation chart didn't say
+  what kind.
+- **Done:**
+  - **Data.** `getWinterOutlook` also keeps the gridpoint `weather` layer,
+    with each condition trimmed to coverage/weather/intensity. A cached
+    entry without it counts as a miss, so older 30-minute entries don't
+    render without types.
+    - In `winterOutlook.js`, `precipTypeOf` maps NWS's full weather-type
+      enum (checked against api.weather.gov's OpenAPI spec) to ice (freezing
+      rain, freezing drizzle, sleet), snow (snow, snow showers) or rain
+      (rain, rain showers, drizzle, thunderstorms, hail). Non-precipitation
+      types are ignored.
+    - A mix takes the most hazardous category (ice > snow > rain) and keeps
+      every type's word. `buildOutlook` adds `precipType` per hour.
+    - `precipChanceByCategory` splits the chance into one series per type
+      (plus "none") and adds a closing point after each run, so stepped
+      blocks meet without a one-hour gap. The exception is a type resuming
+      after a single hour: closing there would join its two runs across
+      the other type's hour, so it's left as a gap. `listWords` joins the
+      type words for display.
+  - **Chart.** The chance-of-precipitation chart draws four colored series:
+    - aqua `#199e70` = rain (new)
+    - blue = snow
+    - orange = freezing rain / sleet (legend later shortened to "Sleet",
+      per owner; the readout still names freezing rain/drizzle exactly)
+    - gray `#7d8ca3` = type not given (legend later renamed
+      "Unspecified", per owner)
+    Blue and orange keep the meaning they have in the snow/ice chart. The
+    three category colors were validated with `--pairs all` on `#122b4d`
+    (all pass), and the gray has 4.2:1 contrast. The chart has its own
+    legend, which shows "Type not given" (now "Unspecified") only when
+    some hour needs it.
+    Legends wrap at phone width.
+  - **Readout and Details** name the types, e.g. "80% chance of freezing
+    rain and sleet" or "60% chance of snow and rain". With no type given,
+    they still say "chance of precipitation".
+  - **Not added:** a rain amount. NWS's `quantitativePrecipitation` is the
+    liquid equivalent of all precipitation, not rain alone, so it can't be
+    shown as rain the way snow and ice are.
+  - Tests: 17 new in `winterOutlook.test.js` (every precipitation type,
+    mix precedence, ignored types, per-hour assignment, run closing and the
+    one-hour-resume case, `listWords`), plus the weather-trimming
+    assertion in `weatherApi.test.js`. 77/77 pass; lint and build pass.
+- **Verified in headless Chrome** (`vite preview`):
+  - Live Fairbanks: blue snow blocks, gray where NWS gives a chance but no
+    type, and readouts "49% chance of snow" / "14% chance of
+    precipitation".
+  - An injected sequence (rain, then freezing rain + sleet, then snow +
+    rain, then no type) drew aqua, orange, blue and gray blocks meeting
+    with no gaps. The readouts said "40% chance of rain", "80% chance of
+    freezing rain and sleet" and "60% chance of snow and rain".
+  - 390 px: legends wrap, no overflow.
+
+### 21. Forecast snow/ice lifts a no-alert FRTCON 5 to 4 — ✅ FIXED
+
+- **Report (per owner, 2026-09-30):** Fairbanks showed FRTCON 5 while the
+  outlook had ~1 in of snow in the next 48 hours. Checked live: the NWS
+  text forecast said "New snow accumulation of around one inch possible"
+  tonight and Thursday. The only active alert was a Special Weather
+  Statement ("about 1 inch or less is expected around Fairbanks"), which
+  FRTCON ignores. An inch is too routine in Fairbanks for an advisory.
+- **Options put to the owner:**
+  1. Let forecast snow/ice lift 5 to 4.
+  2. Keep 5 with different wording.
+  3. Read Special Weather Statements' free text for snow (advised
+     against).
+
+  **Owner chose option 1, with a 1 in snow threshold** (rather than any
+  measurable 0.1 in). Any ice counts.
+- **Done:**
+  - `determineFrtcon(alerts, forecast)` in `src/lib/frtcon.js`: when no
+    winter alert matches (none, or only non-winter ones), >= 1.0 in snow or
+    any ice in `forecast` (`{ snow, ice }`, buildOutlook's 48-hour totals)
+    returns level 4 with `forecastDriven: true`.
+    - Title is "Snow (or Ice) in the forecast, no winter alerts yet".
+    - Reason is "NWS forecasts 1.0 in of snow [and 0.10 in of ice] in the
+      next 48 hours, but no winter weather alerts are active."
+    - Snow is compared at its displayed 0.1 in precision, so a float sum
+      like 0.1 + 0.8 + 0.1 can't show "1.0 in" but score 5. Ice is
+      compared at 0.01 in.
+    - Winter alerts always win. The result is never above 4, and with no
+      forecast the rule is alert-only as before.
+    - `FORECAST_SNOW_MIN_IN` is exported for the panel's note.
+  - `App.jsx` now loads the outlook with every lookup, after
+    `getZoneByPoint`, which caches the grid URL from its `/points`
+    response, so there's still one `/points` request.
+    - Its failure is caught: the score is alert-only and `outlookError`
+      goes to the panel.
+    - `refreshAlerts` also refreshes it, through its 30-minute cache, and
+      keeps the last good outlook on failure.
+    - `outlook` is built once in `App` and used for both the score and the
+      panel. The panel no longer fetches anything; its note now explains
+      the 5-to-4 rule.
+    - A "Forecast driving the score" block, e.g. "Snow: 1.0 in in 48
+      hours", shows where "Winter alerts driving the score" would.
+  - Cost, checked live: the gridpoint request is ~60 ms and ~10 KB
+    gzipped (175 KB raw).
+  - Tests: 6 new in `frtcon.test.js` covering:
+    - the threshold
+    - display-precision rounding, including a 0.1 + 0.8 + 0.1 float sum
+    - ice and combined wording
+    - non-winter alerts only
+    - never overriding a winter alert or exceeding 4
+    - no or light forecast
+
+    83/83 pass; lint and build pass.
+- **Verified in headless Chrome** (`vite preview`, live NWS):
+  - Fairbanks → FRTCON 4, "Snow in the forecast, no winter alerts yet",
+    "Forecast driving the score: Snow: 1.0 in in 48 hours", and the
+    #FRTCON4 headline, with one `/points` request.
+  - Duluth → still FRTCON 5 ("No snow or ice in the forecast").
+  - Fairbanks with the gridpoint request forced to 503 → the lookup still
+    succeeds at alert-only FRTCON 5, and the panel shows "Couldn't load the
+    forecast...".
+- **Known effect, accepted:** the 48-hour total counts an NWS period
+  already under way in full (#19), so a forecast-driven 4 can last until
+  that period ends even after the snow has fallen.
+- **Not verified:** the refresh path in a browser (it reuses the tested
+  lookup pieces); ice-only triggering against live data.
+
 ## Checked, no change needed
 
 - Request race handling (AbortController plus the geolocation sequence

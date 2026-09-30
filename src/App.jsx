@@ -5,6 +5,7 @@ import {
   getLatLonFromZip,
   getZoneByPoint,
   getActiveAlertsByPoint,
+  getWinterOutlook,
   ALERTS_AUTO_REFRESH_MS,
   STALE_ON_VISIBLE_MS,
 } from "./lib/weatherApi";
@@ -16,11 +17,13 @@ import {
   GEOLOCATION_PRECISE_TIMEOUT_MS,
 } from "./lib/geolocationError";
 import { determineFrtcon, pickRandomItems } from "./lib/frtcon";
+import { buildOutlook, formatIce, formatSnow } from "./lib/winterOutlook";
 import { alertMessages } from "./data/alertMessages";
 import { SnowOverlay } from "./components/SnowOverlay";
 import { FrtconBadge } from "./components/FrtconBadge";
 import { FrtconMessage } from "./components/FrtconMessage";
 import { AlertCard } from "./components/AlertCard";
+import { WinterOutlookPanel } from "./components/WinterOutlookPanel";
 import { RecipeModal } from "./components/RecipeModal";
 import { IOSInstallHelp } from "./components/IOSInstallHelp";
 
@@ -181,9 +184,15 @@ export default function App() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [menuOpen]);
 
+  // The 48-hour outlook (chart data + snow/ice totals), rebuilt on every
+  // refresh so its window moves forward. null when it didn't load.
+  const outlook = useMemo(() => (result?.outlook ? buildOutlook(result.outlook) : null), [result]);
+
+  // Alerts decide the level; forecast snow/ice can only lift a 5 to a 4 (see
+  // determineFrtcon). Without the outlook it's purely alert-based.
   const frtcon = useMemo(() => {
-    return result?.alerts ? determineFrtcon(result.alerts) : null;
-  }, [result]);
+    return result?.alerts ? determineFrtcon(result.alerts, outlook?.totals ?? null) : null;
+  }, [result, outlook]);
 
   // Computed here (rather than inside FrtconMessage) so the Share button can
   // reuse the exact headline/title/commentary lines already on screen,
@@ -249,9 +258,20 @@ export default function App() {
         // point query (see getActiveAlertsByPoint for why that's not a
         // zone-based lookup) -- neither depends on the other's result, so
         // there's no reason to wait for one before starting the other.
-        const [zone, alerts] = await Promise.all([
-          getZoneByPoint(lat, lon, { signal }),
+        //
+        // The winter outlook waits for the zone lookup, which caches the
+        // grid URL from the same /points response (no second /points
+        // request). It can only lift a 5 to a 4, so its failure doesn't
+        // fail the lookup: the score is then alert-only, and the outlook
+        // panel shows the error.
+        const zonePromise = getZoneByPoint(lat, lon, { signal });
+        const [zone, alerts, outlookResult] = await Promise.all([
+          zonePromise,
           getActiveAlertsByPoint(lat, lon, { signal, skipCache }),
+          zonePromise
+            .then(() => getWinterOutlook(lat, lon, { signal }))
+            .then((outlook) => ({ outlook, outlookError: "" }))
+            .catch((err) => ({ outlook: null, outlookError: err instanceof Error ? err.message : "Unknown error." })),
         ]);
 
         if (signal.aborted) return false;
@@ -263,6 +283,7 @@ export default function App() {
           lon,
           zone,
           alerts,
+          ...outlookResult,
           fetchedAt: Date.now(),
         });
         return true;
@@ -286,11 +307,16 @@ export default function App() {
   // its result if the location it was fetched for is still the one on
   // screen -- guards against a slow refresh landing after the user has
   // since searched somewhere else.
+  // The outlook refreshes alongside, through its own 30-minute cache (NWS
+  // regenerates the grid about hourly); if that fails, the last good
+  // outlook is kept, like any other refresh failure.
   const refreshAlerts = useCallback((lat, lon) => {
-    return getActiveAlertsByPoint(lat, lon, { skipCache: true })
-      .then((alerts) => {
+    return Promise.all([getActiveAlertsByPoint(lat, lon, { skipCache: true }), getWinterOutlook(lat, lon).catch(() => null)])
+      .then(([alerts, outlook]) => {
         setResult((prev) =>
-          prev && prev.lat === lat && prev.lon === lon ? { ...prev, alerts, fetchedAt: Date.now() } : prev
+          prev && prev.lat === lat && prev.lon === lon
+            ? { ...prev, alerts, ...(outlook ? { outlook, outlookError: "" } : {}), fetchedAt: Date.now() }
+            : prev
         );
       })
       .catch(() => {
@@ -742,6 +768,16 @@ export default function App() {
                 </div>
               ) : null}
 
+              {frtcon.forecastDriven && outlook ? (
+                <div className="frtcon-matching-alerts">
+                  <div className="frtcon-matching-alerts-title">Forecast driving the score</div>
+                  <div>
+                    {outlook.totals.snow > 0 ? <span className="alert-tag">Snow: {formatSnow(outlook.totals.snow)} in 48 hours</span> : null}
+                    {outlook.totals.ice > 0 ? <span className="alert-tag">Ice: {formatIce(outlook.totals.ice)} in 48 hours</span> : null}
+                  </div>
+                </div>
+              ) : null}
+
               {frtcon.matchingAlerts.length > 0 ? (
                 <div className="frtcon-matching-alerts">
                   <div className="frtcon-matching-alerts-title">Winter alerts driving the score</div>
@@ -763,6 +799,8 @@ export default function App() {
               ) : (
                 result.alerts.map((feature) => <AlertCard key={feature.id} feature={feature} />)
               )}
+
+              <WinterOutlookPanel outlook={outlook} error={result.outlookError} />
             </div>
           </div>
         ) : null}

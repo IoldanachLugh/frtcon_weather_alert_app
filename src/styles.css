@@ -587,6 +587,120 @@ div[role="dialog"] {
 }
 
 /* ==========================================================================
+   48-hour winter outlook (WinterOutlookPanel / WinterOutlookChart)
+   ========================================================================== */
+
+/* Collapsible heading, styled like "Active Alerts" (it also carries
+   .active-alerts-heading) but as a button. */
+.outlook-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 0;
+  text-align: center;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.outlook-marker {
+  display: inline-block;
+  margin-right: 0.4em;
+  font-size: 0.6em;
+  vertical-align: middle;
+}
+
+/* One glyph rotated rather than a separate down-triangle character, which
+   most fonts draw noticeably smaller. */
+.outlook-toggle[aria-expanded="true"] .outlook-marker {
+  transform: rotate(90deg);
+}
+
+.outlook-note {
+  margin-top: 0;
+}
+
+.outlook-totals {
+  margin: 10px 0 0;
+  color: #ffffff;
+}
+
+.outlook-chart {
+  margin-top: 6px;
+  width: 100%;
+}
+
+.outlook-readout {
+  min-height: 2.6em;
+  margin: 6px 0;
+  color: #dbe7f5;
+  font-size: 14px;
+}
+
+.outlook-chart-title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 8px;
+  color: #c8d7ea;
+  font-size: 14px;
+  text-align: left;
+}
+
+.outlook-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.outlook-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.outlook-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Same as BLUE / ORANGE / AQUA / GRAY in WinterOutlookChart.jsx. */
+.outlook-swatch--snow {
+  background: #3987e5;
+}
+
+.outlook-swatch--ice {
+  background: #d95926;
+}
+
+.outlook-swatch--rain {
+  background: #199e70;
+}
+
+.outlook-swatch--none {
+  background: #7d8ca3;
+}
+
+.outlook-details {
+  margin-top: 10px;
+  color: #dbe7f5;
+  text-align: left;
+}
+
+.outlook-details summary {
+  cursor: pointer;
+}
+
+.outlook-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+}
+
+/* ==========================================================================
    Modals (recipe modal + iOS install-help modal)
    ========================================================================== */
 

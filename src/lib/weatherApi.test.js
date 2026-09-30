@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchJson, HttpError, getLatLonFromZip, getZoneByPoint, getActiveAlertsByPoint } from "./weatherApi";
+import { fetchJson, HttpError, getLatLonFromZip, getZoneByPoint, getActiveAlertsByPoint, getWinterOutlook } from "./weatherApi";
 
 // fetch is stubbed per test. localStorage isn't available under vitest's
 // node environment, so cache.js's try/catch makes every cache read a miss --
@@ -104,5 +104,49 @@ describe("getActiveAlertsByPoint", () => {
     const fetchMock = stubFetch(() => jsonResponse({ features: [{ id: "a1" }] }));
     await expect(getActiveAlertsByPoint(46.1, -92.5)).resolves.toEqual([{ id: "a1" }]);
     expect(fetchMock.mock.calls[0][0]).toBe("https://api.weather.gov/alerts/active?point=46.1,-92.5&status=actual");
+  });
+});
+
+describe("getWinterOutlook", () => {
+  it("resolves the grid URL from /points and keeps only the outlook layers", async () => {
+    const fetchMock = stubFetch((url) =>
+      url.includes("/points/")
+        ? jsonResponse({ properties: { forecastGridData: "https://api.weather.gov/gridpoints/DLH/91,69" } })
+        : jsonResponse({
+            properties: {
+              temperature: { uom: "wmoUnit:degC", values: [{ validTime: "2026-10-01T10:00:00+00:00/PT1H", value: -5 }] },
+              snowfallAmount: { uom: "wmoUnit:mm", values: [] },
+              skyCover: { uom: "wmoUnit:percent", values: [{ validTime: "x", value: 1 }] },
+              weather: {
+                values: [
+                  {
+                    validTime: "2026-10-01T10:00:00+00:00/PT6H",
+                    value: [{ coverage: "likely", weather: "snow", intensity: "light", visibility: { value: null }, attributes: [] }],
+                  },
+                ],
+              },
+            },
+          })
+    );
+    const outlook = await getWinterOutlook(46.78, -92.1);
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "https://api.weather.gov/points/46.78,-92.1",
+      "https://api.weather.gov/gridpoints/DLH/91,69",
+    ]);
+    expect(Object.keys(outlook).sort()).toEqual(["iceAccumulation", "probabilityOfPrecipitation", "snowfallAmount", "temperature", "weather"]);
+    // Each weather condition is trimmed to what the chart uses.
+    expect(outlook.weather.values[0].value).toEqual([{ coverage: "likely", weather: "snow", intensity: "light" }]);
+    expect(outlook.temperature.values).toHaveLength(1);
+    expect(outlook.iceAccumulation).toEqual({ uom: null, values: [] });
+  });
+
+  it("gives the friendly message when the grid request fails", async () => {
+    silenceConsole();
+    stubFetch((url) =>
+      url.includes("/points/")
+        ? jsonResponse({ properties: { forecastGridData: "https://api.weather.gov/gridpoints/DLH/91,69" } })
+        : jsonResponse({}, 503)
+    );
+    await expect(getWinterOutlook(46.78, -92.1)).rejects.toThrow("The weather service isn't responding right now.");
   });
 });

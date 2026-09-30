@@ -129,3 +129,46 @@ describe("pickRandomItems", () => {
     expect(items).toEqual(copy);
   });
 });
+
+describe("determineFrtcon with a forecast", () => {
+  it("raises a no-alert 5 to 4 for at least 1 in of forecast snow", () => {
+    const result = determineFrtcon([], { snow: 1.0, ice: 0 });
+    expect(result).toMatchObject({ level: 4, label: "FRTCON 4", forecastDriven: true, matchingAlerts: [] });
+    expect(result.title).toBe("Snow in the forecast, no winter alerts yet");
+    expect(result.reason).toBe("NWS forecasts 1.0 in of snow in the next 48 hours, but no winter weather alerts are active.");
+  });
+
+  it("compares snow at its displayed precision", () => {
+    // 0.1 + 0.8 + 0.1 in, the way per-period totals actually sum in floats.
+    expect(determineFrtcon([], { snow: 0.1 + 0.8 + 0.1 - 1e-12, ice: 0 }).level).toBe(4);
+    expect(determineFrtcon([], { snow: 0.94, ice: 0 }).level).toBe(5);
+    expect(determineFrtcon([], { snow: 0.95, ice: 0 }).level).toBe(4);
+  });
+
+  it("raises to 4 for any ice, and names both amounts", () => {
+    const result = determineFrtcon([], { snow: 2.25, ice: 0.1 });
+    expect(result.level).toBe(4);
+    expect(result.title).toBe("Ice in the forecast, no winter alerts yet");
+    expect(result.reason).toBe("NWS forecasts 2.3 in of snow and 0.10 in of ice in the next 48 hours, but no winter weather alerts are active.");
+    expect(determineFrtcon([], { snow: 0, ice: 0.01 }).level).toBe(4);
+    expect(determineFrtcon([], { snow: 0.5, ice: 0.004 }).level).toBe(5);
+  });
+
+  it("also raises when only non-winter alerts are active", () => {
+    expect(determineFrtcon([alert("Special Weather Statement")], { snow: 1, ice: 0 }).level).toBe(4);
+  });
+
+  it("never overrides a winter alert, and never goes above 4", () => {
+    expect(determineFrtcon([alert("Winter Weather Advisory")], { snow: 12, ice: 1 }).level).toBe(3);
+    const watch = determineFrtcon([alert("Winter Storm Watch")], { snow: 12, ice: 0 });
+    expect(watch.level).toBe(4);
+    expect(watch.forecastDriven).toBeUndefined();
+    expect(determineFrtcon([], { snow: 30, ice: 2 }).level).toBe(4);
+  });
+
+  it("stays alert-only with no forecast or a light one", () => {
+    expect(determineFrtcon([]).level).toBe(5);
+    expect(determineFrtcon([], null).level).toBe(5);
+    expect(determineFrtcon([], { snow: 0.5, ice: 0 }).level).toBe(5);
+  });
+});

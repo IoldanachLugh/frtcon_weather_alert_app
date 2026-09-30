@@ -127,6 +127,77 @@ part of this app.
   Search ZIP while it's the location on screen. Coordinates outside NWS
   coverage get the normal "isn't covered" error. This is the input half of
   the shelved server-rendered share previews idea.
+- **48-hour winter outlook** (PLAN.md #19; `WinterOutlookPanel`,
+  `WinterOutlookChart`, `lib/winterOutlook.js`, `getWinterOutlook`). Its
+  48-hour snow/ice totals also feed one scoring rule (PLAN.md #21, below);
+  otherwise it's display only. Design calls:
+  - **Three small charts, not one.** Snow/ice (in), temperature (°F) and
+    chance of precipitation (%) have different units; a dual-axis chart was
+    ruled out. They share x padding and y-axis width so one hour sits at
+    the same x in each (without equal padding uPlot narrowed only the
+    bottom chart, to fit its last time label, and hover lined up with
+    different hours), and sync their cursors into one text readout above
+    them (no uPlot legends).
+  - **Snow/ice are period totals, not hourly.** NWS gridpoint
+    `snowfallAmount`/`iceAccumulation` are totals per interval (6 h,
+    checked live), so repeating them per hour (right for temperature and
+    chance of precipitation) would multiply them, and splitting them into
+    hours would invent timing NWS doesn't give. Each hour carries its
+    period's total, drawn as a stepped block across the period. The
+    48-hour total counts a period that started before the current hour in
+    full. Ice keeps its own period range in the readout, since snow and ice
+    periods needn't line up.
+  - **Fetching:** `/points` → `forecastGridData`, with every lookup and
+    refresh (since #21), in `App.jsx`; the panel only displays it.
+    `getZoneByPoint` caches the grid URL from its own `/points` response,
+    and the outlook request waits for it, so there's still one `/points`
+    request per lookup. Only the five layers are cached (`weather` trimmed to
+    type/coverage/intensity; entries cached before it existed are
+    refetched): `frtcon_grid_url_` 1 h,
+    `frtcon_outlook_` 30 min, both swept. The full response is ~175 KB
+    (~10 KB gzipped, ~60 ms when checked). Refetched with the main 5-minute
+    refresh (usually a cache hit); a failed refresh keeps the last good
+    outlook, and a failed first load leaves scoring alert-only and the
+    panel showing the error, without failing the lookup. Units are converted from NWS's `wmoUnit:degC`/`mm`.
+  - **Precipitation type** (PLAN.md #20): the chance-of-precipitation
+    blocks are colored by NWS's gridpoint `weather` layer. Its type enum
+    (from api.weather.gov's OpenAPI spec) maps to ice (freezing rain,
+    freezing drizzle, sleet), snow (snow, snow showers) or rain (rain, rain
+    showers, drizzle, thunderstorms, hail). Non-precipitation types (fog,
+    frost, blowing snow...) are ignored. A mixed period takes the most
+    hazardous color, in FRTCON order (ice > snow > rain), rather than a
+    fourth "mix" color; the readout lists every type. Hours with a chance
+    but no type are gray. Rain has no amount chart: NWS's
+    `quantitativePrecipitation` is liquid-equivalent for all types, not a
+    rain amount. Each type is its own uPlot series, and
+    `precipChanceByCategory` adds a closing point after each run so stepped
+    blocks meet with no gap (except where a type resumes after a single
+    hour, where closing would join the runs across it).
+  - **Colors:** dataviz reference palette dark slots 1-3, validated against
+    the card surface `#122b4d` with all pairs checked (types can sit next
+    to each other in any order): blue `#3987e5` = snow (and the temperature
+    line), orange `#d95926` = ice (legend "Sleet", also covering freezing
+    rain/drizzle), aqua `#199e70` =
+    rain. Gray `#7d8ca3` (4.2:1) = "Unspecified" (a chance of
+    precipitation with no type given). The meanings are the same
+    in both charts. With no ice forecast, the ice amount series is hidden
+    (otherwise an orange line covers the zero baseline) and its legend says
+    "Ice (none forecast)".
+- **Forecast snow/ice can lift FRTCON 5 to 4** (PLAN.md #21, owner's
+  decision 2026-09-30, after Fairbanks showed FRTCON 5 with an inch of snow
+  forecast and only a Special Weather Statement active). In
+  `determineFrtcon(alerts, forecast)`: with no *winter* alert active (none,
+  or only unrelated ones), >= 1.0 in of snow (compared at its displayed
+  0.1 in precision, `FORECAST_SNOW_MIN_IN`) or any ice (> 0 at 0.01 in) in
+  the outlook's 48-hour totals makes it level 4 (`forecastDriven: true`,
+  its own title/reason, "Forecast driving the score" in the UI; the level-4
+  commentary lines are shared). Deliberately capped at 4 and never applied
+  when any winter alert is active: alerts are calibrated by NWS to local
+  norms, a raw inch count isn't. Options considered and not taken: keeping
+  5 with different wording, and reading Special Weather Statements' free
+  text for snow (the classifier deliberately avoids free-text matching).
+  Known effect: the 48-hour total counts a period already under way in
+  full, so the 4 can linger until that period ends.
 - **Browser-geolocation lookup:** a low-accuracy try (15 s, accepts a fix
   up to 10 min old), then, for any failure except permission-denied, one
   high-accuracy retry (30 s). Timeouts are the constants in

@@ -102,16 +102,49 @@ export function classifyAlert(alert) {
   return checks.find((check) => check.match) || null;
 }
 
-export function determineFrtcon(alerts) {
+// Forecast snow/ice can lift an otherwise all-clear FRTCON 5 to 4 (see
+// determineFrtcon). Snow is compared at the precision it's shown with
+// (0.1 in) and ice at 0.01 in, so the badge can't disagree with the
+// displayed total (e.g. a 0.99999 in float sum shown as "1.0 in").
+export const FORECAST_SNOW_MIN_IN = 1;
+
+function forecastLevel4(forecast) {
+  const snow = Math.round((forecast?.snow ?? 0) * 10) / 10;
+  const ice = Math.round((forecast?.ice ?? 0) * 100) / 100;
+  if (snow < FORECAST_SNOW_MIN_IN && ice <= 0) return null;
+  const amounts = [snow >= FORECAST_SNOW_MIN_IN ? `${snow.toFixed(1)} in of snow` : null, ice > 0 ? `${ice.toFixed(2)} in of ice` : null]
+    .filter(Boolean)
+    .join(" and ");
+  return {
+    level: 4,
+    label: "FRTCON 4",
+    title: ice > 0 ? "Ice in the forecast, no winter alerts yet" : "Snow in the forecast, no winter alerts yet",
+    reason: `NWS forecasts ${amounts} in the next 48 hours, but no winter weather alerts are active.`,
+    matchingAlerts: [],
+    forecastDriven: true,
+  };
+}
+
+// `forecast` is optional: { snow, ice } in inches over the next 48 hours
+// (buildOutlook's totals). Alerts decide the level; the forecast only ever
+// turns a level 5 into a 4, when at least FORECAST_SNOW_MIN_IN of snow or
+// any ice is forecast with no winter alert active (e.g. Fairbanks' first
+// inch of the season, which is too routine there for an advisory). It never
+// raises anything above 4 -- NWS's alerts, which are calibrated to what's
+// normal locally, stay the only way to reach 1-3. Without a forecast
+// (not loaded, or its request failed) this is purely alert-based.
+export function determineFrtcon(alerts, forecast = null) {
   if (!alerts.length) {
-    return {
-      level: 5,
-      label: "FRTCON 5",
-      title: "No major winter storm alerts",
-      reason:
-        "No active winter storm, blizzard, ice storm, or winter weather alerts were found for this zone.",
-      matchingAlerts: [],
-    };
+    return (
+      forecastLevel4(forecast) ?? {
+        level: 5,
+        label: "FRTCON 5",
+        title: "No major winter storm alerts",
+        reason:
+          "No active winter storm, blizzard, ice storm, or winter weather alerts were found for this zone.",
+        matchingAlerts: [],
+      }
+    );
   }
 
   const winterMatches = alerts
@@ -120,14 +153,16 @@ export function determineFrtcon(alerts) {
     .sort((a, b) => a.classification.level - b.classification.level);
 
   if (!winterMatches.length) {
-    return {
-      level: 5,
-      label: "FRTCON 5",
-      title: "Active alerts, but not winter storm alerts",
-      reason:
-        "There are active alerts in this zone, but none matched the winter storm conditions used for the FRTCON scale.",
-      matchingAlerts: [],
-    };
+    return (
+      forecastLevel4(forecast) ?? {
+        level: 5,
+        label: "FRTCON 5",
+        title: "Active alerts, but not winter storm alerts",
+        reason:
+          "There are active alerts in this zone, but none matched the winter storm conditions used for the FRTCON scale.",
+        matchingAlerts: [],
+      }
+    );
   }
 
   const top = winterMatches[0];
