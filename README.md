@@ -16,6 +16,14 @@ Live at [frtcon.com](https://frtcon.com).
 - Remembers whichever method (location or ZIP) you used last, and
   automatically re-runs it on your next visit — no need to click a button
   again.
+- Accepts optional `lat` and `lon` URL parameters (e.g.
+  `https://frtcon.com/?lat=46.7867&lon=-92.1005`) to load a specific
+  location on page load. Both are required and must be in range, otherwise
+  they're ignored. They take priority over the remembered lookup method,
+  and a URL-driven lookup is not saved as the "last used" method.
+- If browser location fails, explains why in plain language (timed out,
+  position unavailable, or permission denied) rather than showing the
+  browser's own terse error text.
 - Lists every raw active NWS alert covering your location, not just the one
   driving the FRTCON score.
 - Has a printable recipe modal (Jeff's French Toast recipe) that prints
@@ -55,6 +63,7 @@ score."
 
 - React + Vite
 - Plain CSS (no CSS-in-JS, no Tailwind) — see `src/styles.css`
+- `vitest` for the classification logic's and API layer's test suites
 - No backend — this is a fully static, client-side app. All data comes
   directly from public APIs, called from the browser.
 - No build-time API keys or secrets of any kind are required.
@@ -67,10 +76,15 @@ src/
   styles.css                — all styling, semantically class-named
   lib/
     weatherApi.js            — fetch/network layer (NWS + ZIP lookup APIs)
+    weatherApi.test.js       — vitest suite for the API layer's errors
+                                and request shape (fetch stubbed)
     cache.js                 — localStorage caching helpers (TTL-based)
     frtcon.js                — pure classification logic (classifyAlert,
                                 determineFrtcon) — no React/DOM dependency,
-                                straightforward to unit test directly
+                                covered by frtcon.test.js
+    frtcon.test.js           — vitest suite for the above
+    geolocationError.js      — plain-language browser-geolocation errors and
+                                the lookup timeouts (+ geolocationError.test.js)
   data/
     alertMessages.js          — the FRTCON 1–5 headline/title/commentary content
     recipe.js                 — Jeff's French Toast recipe content
@@ -92,7 +106,10 @@ src/
 npm install
 npm run dev       # local dev server
 npm run build      # production build, outputs to dist/
+npm run test       # run the test suites once
 ```
+
+Vite 8 needs Node `^20.19.0 || >=22.12.0` (see CONTEXT.md).
 
 ## Deployment notes
 
@@ -178,6 +195,16 @@ be the right place to add proper NWS attribution.
 
 ## Ideas for later (not yet built)
 
+- **Sources panel with a 48-hour winter chart** (from the soupcon.org
+  fork, which has a rain/cloud version built with uPlot): NWS's raw
+  gridpoint data has hourly snowfall, ice accumulation, temperature and
+  precipitation chance, so a display-only outlook could show what's coming
+  before any alert is issued. Needs a FRTCON-specific design choice of what
+  to plot; not started.
+- **Worldwide lookups** (soupcon uses Open-Meteo outside the US): the
+  plumbing would port, but Open-Meteo has no alerts, so non-US FRTCON would
+  need a second, forecast-based scale. Also note Open-Meteo's free tier is
+  non-commercial, which conflicts with the affiliate idea below.
 - **Web Share API on mobile**: the Facebook Share button (see "What it
   does") covers the desktop-style flow; a native share sheet on mobile
   (carrying the condition text + a link directly) is not built.

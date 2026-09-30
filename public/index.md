@@ -6,7 +6,9 @@ translates them into a **French Toast Condition** level: a tongue-in-cheek
 
 The live app is at <https://frtcon.com/>. It is a client-side web app: the
 alert lookup runs in the visitor's browser (by browser geolocation or ZIP
-code), so there is no server-side API to call.
+code), so there is no server-side API to call. To open it for a specific
+US location, add `lat` and `lon` query parameters, e.g.
+<https://frtcon.com/?lat=46.7867&lon=-92.1005>.
 
 ## The scale
 

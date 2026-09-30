@@ -5,7 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // soupcon/: a local, gitignored copy of the soupcon fork kept for reference.
+  globalIgnores(['dist', 'soupcon']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

@@ -312,6 +312,13 @@ div[role="dialog"] {
   min-width: 180px;
 }
 
+/* "Using Lat: .. Lon: .." beside Search ZIP while a ?lat=&lon= URL location
+   is what's on screen, so it's visible the parameters were accepted. */
+.custom-location-note {
+  color: #dbeafe;
+  font-size: 14px;
+}
+
 .visually-hidden-label {
   position: absolute;
   left: -9999px;
@@ -604,6 +611,11 @@ div[role="dialog"] {
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  /* Same as .app-page's font. RecipeModal renders outside .app-page (so
+     it prints on its own), so without this it never inherits that font
+     and falls back to the browser's default serif. IOSInstallHelp is
+     inside .app-page and already gets it -- no change there. */
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .modal-card--narrow {

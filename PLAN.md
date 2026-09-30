@@ -558,7 +558,7 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     of non-obvious "decision made and why" CONTEXT.md exists to capture
     and nothing there mentioned it before.
 
-### 11. No tests for the classification logic
+### 11. No tests for the classification logic — ✅ FIXED
 
 - **Problem:** `src/lib/frtcon.js` was written to be testable, but there is
   no test suite. Tests would have guarded a change like `a2e3cd1`.
@@ -571,6 +571,14 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
   - `determineFrtcon`: empty list, non-winter-only list, lowest level wins,
     `matchingAlerts` sorted
   - `pickRandomItems` returns `min(count, length)` unique items
+- **Done (2026-09-30, as part of #15 below):** `vitest` (^2.1.9, the same
+  version the soupcon fork uses) added with `"test": "vitest run"`.
+  `src/lib/frtcon.test.js` covers every bullet above plus #13's cases
+  (Frost Advisory / Freeze Warning alone → 4; with a Winter Weather
+  Advisory → 3; Freeze Warning + Winter Storm Warning → 2), non-winter
+  alerts → null, and case-insensitivity. `vite.config.js` limits vitest to
+  `src/**/*.test.{js,jsx}` so the nested, gitignored `soupcon/` checkout's
+  own tests aren't picked up. 36 tests, all passing.
 
 ### 12. Minor — ✅ FIXED
 
@@ -723,6 +731,93 @@ Items are ordered by priority. File references are `path:line` at `7ff8fdb`.
     "low-stakes" framing is fine as-is. No change made.
   - **Still open:** automated test coverage for this (#11) -- verified
     manually above, not yet captured in a test suite.
+
+## Backports from the soupcon fork (2026-09-30)
+
+The soupcon.org fork (a local copy sits in `soupcon/`, gitignored and
+excluded from lint/tests) grew several fixes to the plumbing both apps
+share. Reviewed both codebases side by side; these five were taken as-is or
+lightly adapted. Its Sources chart, gridpoint/`relativeLocation` label and
+Open-Meteo worldwide path were **not** taken: the chart needs a
+FRTCON-specific design, and worldwide support would need a second,
+forecast-based FRTCON scale since Open-Meteo has no alerts. Neither is
+started; both are listed under "Ideas for later" in README.md.
+
+### 14. Recipe modal fell back to a serif font — ✅ FIXED
+
+- **Problem:** `RecipeModal` renders outside `.app-page` (so it prints on
+  its own), so it never inherited the app's Arial and used the browser's
+  default serif. Found and fixed in soupcon (its SOUP_PLAN item 17).
+- **Done:** `.modal-card` in `src/styles.css` sets the same `font-family`
+  as `.app-page`. Verified in headless Chrome: a recipe list item's
+  computed font is `Arial, Helvetica, sans-serif` on screen and under
+  print media emulation.
+
+### 15. Test suite (vitest) — ✅ FIXED
+
+- **Done:** see #11 for the classifier tests. Also added
+  `src/lib/weatherApi.test.js` (9 tests, `fetch` stubbed the way soupcon's
+  suite does): `fetchJson` throws an `HttpError` with status/URL and flags
+  its own timeout as `timeout: true`; `getLatLonFromZip` gives the friendly
+  not-found message on a 404 and on a 200 with no places, and the generic
+  message (no URL) on a 500; `getZoneByPoint` returns id/name and gives the
+  "isn't covered" message on a `/points` 404; `getActiveAlertsByPoint`
+  queries `?point=` (guards #1). `eslint.config.js` ignores `soupcon/` too
+  (its built `dist/` bundle otherwise produced 152 lint errors).
+
+### 16. Browser-geolocation errors showed the browser's raw text — ✅ FIXED
+
+- **Problem:** the final geolocation error was `${geoError.message} Try
+  entering a ZIP code instead.`, so a timeout read "Timeout expired Try
+  entering a ZIP code instead." -- Chrome's bare wording, nothing
+  actionable, after a ~45 s wait. Reported against soupcon by a user in
+  Romania (its SOUP_PLAN item 23); the same code was here.
+- **Done:** new `src/lib/geolocationError.js` (from soupcon):
+  `geolocationErrorMessage` gives plain text per error code (timeout says
+  the device didn't report its location within 45 seconds; position
+  unavailable; permission denied keeps the existing iPhone instructions;
+  anything else is generic), each ending with `ZIP_FALLBACK_HINT` ("You can
+  enter a ZIP code below instead."). The "no geolocation support" message
+  uses the same hint. The two timeouts are now the named constants
+  `GEOLOCATION_FAST_TIMEOUT_MS`/`GEOLOCATION_PRECISE_TIMEOUT_MS`, used by
+  `App.jsx`, so the "45 seconds" can't drift from the real wait. The
+  low-accuracy-then-high-accuracy retry is unchanged (soupcon tried
+  removing it and reverted; see CONTEXT.md). Soupcon's hint also points
+  non-US visitors at its city search; not applicable here, FRTCON is
+  US-only. 4 tests in `geolocationError.test.js`. Verified in headless
+  Chrome with a stubbed `navigator.geolocation` failing with codes 3, 2
+  and 1: each showed the expected message; codes 3/2 made the retry
+  (2 calls), code 1 didn't (1 call).
+
+### 17. `?lat=&lon=` URL parameters — ✅ FIXED
+
+- **Done:** ported from soupcon (its SOUP_PLAN item 21). `App.jsx` reads
+  `?lat=..&lon=..` once at module load (`readUrlLocation`); both must be
+  numeric and in range, else they're ignored. When valid they win over the
+  remembered lookup on load (source `"url"`) and are **not** saved to
+  `frtcon_last_source`/`frtcon_last_zip`, so a shared link doesn't replace
+  a visitor's own remembered method. While that location is on screen,
+  "Using Lat: {lat} Lon: {lon}" shows beside Search ZIP
+  (`.custom-location-note`). A step toward the shelved "server-rendered
+  share previews" idea, which would use the same parameters.
+- **Verified in headless Chrome** (`vite preview` of the production
+  build, live NWS): Duluth coordinates → FRTCON result with the note, and
+  nothing saved; with a saved ZIP, the URL still wins and the saved ZIP is
+  left intact; a ZIP search afterwards removes the note and saves
+  `zip`; `lat=999`, a lone `lat` and `lat=abc` are ignored (no lookup, no
+  note); London → "This location isn't covered by the National Weather
+  Service."; 390 px width has no horizontal overflow.
+- **Not unit-tested:** `readUrlLocation` is inline in `App.jsx` (module
+  load), covered by the browser checks above only.
+
+### 18. CONTEXT.md gotchas learned in the fork — ✅ FIXED
+
+- **Done:** added to CONTEXT.md's gotchas: `mod_headers` was off on the
+  shared Apache (fixed there with `a2enmod headers`; confirmed live that
+  frtcon.com now sends its `Link` header), Vite 8's Node version floor, and
+  how to run headless Chrome on this host. Also checked live that
+  frtcon.com's `robots.txt` is served as written, i.e. Cloudflare's managed
+  robots.txt (enabled on the soupcon.org zone) is not on for this zone.
 
 ## Checked, no change needed
 

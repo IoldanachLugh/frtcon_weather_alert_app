@@ -17,6 +17,13 @@ development experience — development has been done largely via Claude,
 with the owner directing architecture, reviewing/testing, and owning
 infrastructure decisions.
 
+A fork, **SOUPCON** ("Soup Conditions", soupcon.org), was built from this
+codebase and deployed separately on the same origin. It grew fixes to the
+shared plumbing; the ones that applied here were backported on 2026-09-30
+(PLAN.md items 14-18). A local copy of the fork may sit in `soupcon/` for
+reference: it's gitignored and excluded from lint and tests, and is not
+part of this app.
+
 ## Infrastructure summary
 
 - **Domain**: `frtcon.com`, registered at **Namecheap** (migrated from
@@ -66,8 +73,9 @@ infrastructure decisions.
   dynamic values (e.g. each snowflake's randomized position/timing in
   `SnowOverlay.jsx`).
 - `lib/frtcon.js` (`classifyAlert`, `determineFrtcon`) is pure — no
-  React/DOM dependency — specifically so it's straightforward to unit
-  test later, even though no test suite exists yet.
+  React/DOM dependency — and is covered by `src/lib/frtcon.test.js`
+  (`vitest`, `npm run test`); the API layer has `weatherApi.test.js` with
+  `fetch` stubbed.
 - PWA support exists: `manifest.json`, a no-cache/network-first `sw.js`
   (deliberate — this app shows live alert data, so caching would be
   actively misleading, not just stale), and install-flow UI in the
@@ -110,6 +118,21 @@ infrastructure decisions.
   nonexistent ZIP got "remembered" as the preferred method and silently
   re-failed on every later visit — a manual click of "Use Browser
   Location" is unaffected either way.)
+- **`?lat=&lon=` URL parameters** (PLAN.md #17, ported from soupcon):
+  parsed once at module load in `App.jsx` (`readUrlLocation`); both must be
+  numeric and in range or they're ignored. A valid pair wins over the
+  remembered lookup on load (source `"url"`), is never written to
+  `frtcon_last_source`/`frtcon_last_zip` (a shared link shouldn't replace a
+  visitor's own remembered method), and shows "Using Lat: .. Lon: .." beside
+  Search ZIP while it's the location on screen. Coordinates outside NWS
+  coverage get the normal "isn't covered" error. This is the input half of
+  the shelved server-rendered share previews idea.
+- **Browser-geolocation lookup:** a low-accuracy try (15 s, accepts a fix
+  up to 10 min old), then, for any failure except permission-denied, one
+  high-accuracy retry (30 s). Timeouts are the constants in
+  `src/lib/geolocationError.js`, which also writes the plain-language
+  error per error code (never the browser's own text, e.g. Chrome's bare
+  "Timeout expired"), and quotes the 45 s total from those constants.
 
 - **Facebook Share button** (`handleShare` in `App.jsx`). Facebook's
   `sharer.php` accepts only a URL, so the button copies the text to the
@@ -149,8 +172,35 @@ markdown negotiation, AI crawler rules, or content signals. Addressed in
   Cloudflare zone, and Cloudflare's own "Markdown for Agents"/managed
   robots.txt/AI-crawler toggles are dashboard settings. If Cloudflare's
   managed robots.txt is ever enabled it may prepend/override the file above.
+  (Checked 2026-09-30: the live frtcon.com `robots.txt` is this file as
+  written, so it's off for this zone. It *is* on for soupcon.org's zone.)
 
 ## Known gotchas (things that already bit us once)
+
+- **`mod_headers` was not enabled on this origin's Apache**, which
+  silently disabled `.htaccess`'s `Link` headers for frtcon.com (the rules
+  are `<IfModule>`-wrapped, so no error, just no header). Found during the
+  soupcon.org rollout on the same Apache and fixed there with `a2enmod
+  headers` + reload; confirmed live 2026-09-30 that frtcon.com now sends
+  its `Link` header. If the origin is ever rebuilt, check `mod_headers`,
+  `rewrite` and `mime` are on, and check with `curl -I` against the live
+  site -- `.htaccess` reading correctly proves nothing.
+- **Vite 8 (so `npm run dev`/`build`/`test`) needs Node `^20.19.0 ||
+  >=22.12.0`.** Older Node fails in `vite build`/`vitest`, and `npm install`
+  under npm 9 (Node 18) can silently skip a platform-specific optional
+  binding (e.g. `@rolldown/binding-linux-x64-gnu`, npm/cli#4828), leaving
+  `node_modules` broken until reinstalled. This host has nvm with a default
+  that satisfies this (`nvm current`).
+- **Browser testing without Claude in Chrome.** The system Chromium is a
+  snap and won't start from a non-snap shell ("not a snap cgroup").
+  Instead: `npx @puppeteer/browsers install chrome-headless-shell@stable
+  --path <scratch>`, launch it with `--no-sandbox` (AppArmor blocks
+  Chrome's user-namespace sandbox here) via `puppeteer-core`, and drive it
+  against `vite preview` of the production build. `?lat=&lon=` URLs load a
+  location directly; a stubbed `navigator.geolocation` (via
+  `evaluateOnNewDocument`) exercises the geolocation error paths. The app's
+  geolocation accepts a 10-minute-old fix, so changing the emulated
+  position mid-session may still return the old one.
 
 - **Never set a custom `User-Agent` header on `fetch()` calls to
   api.weather.gov.** Chrome/Firefox silently ignore it, but Safari
@@ -192,6 +242,11 @@ markdown negotiation, AI crawler rules, or content signals. Addressed in
   regression) in service-worker behavior specifically.
 
 ## Deliberately decided against (don't re-litigate without new info)
+
+- **Dropping the high-accuracy geolocation retry** (to report a failing
+  lookup after 15 s instead of 45 s): tried and reverted in the soupcon
+  fork -- low accuracy doesn't always work, and the retry is what catches
+  those cases. Same code here.
 
 - **Cloudflare Bot Fight Mode**: left off. No login/payment/auth surface
   on FRTCON itself for it to meaningfully protect, and the Free-tier

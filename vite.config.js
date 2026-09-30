@@ -9,4 +9,9 @@ export default defineConfig({
   // config needed between the two, just copy the same folder to either
   // location.
   base: './',
+  // Only this app's own tests (not anything in a nested checkout, e.g. a
+  // local copy of the soupcon fork kept here for reference).
+  test: {
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })

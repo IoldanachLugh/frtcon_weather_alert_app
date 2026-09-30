@@ -9,6 +9,12 @@ import {
   STALE_ON_VISIBLE_MS,
 } from "./lib/weatherApi";
 import { safeGetItem, safeSetItem } from "./lib/cache";
+import {
+  geolocationErrorMessage,
+  ZIP_FALLBACK_HINT,
+  GEOLOCATION_FAST_TIMEOUT_MS,
+  GEOLOCATION_PRECISE_TIMEOUT_MS,
+} from "./lib/geolocationError";
 import { determineFrtcon, pickRandomItems } from "./lib/frtcon";
 import { alertMessages } from "./data/alertMessages";
 import { SnowOverlay } from "./components/SnowOverlay";
@@ -17,6 +23,22 @@ import { FrtconMessage } from "./components/FrtconMessage";
 import { AlertCard } from "./components/AlertCard";
 import { RecipeModal } from "./components/RecipeModal";
 import { IOSInstallHelp } from "./components/IOSInstallHelp";
+
+// Optional `?lat=..&lon=..` URL parameters point the app at a specific
+// location. Both must be present and in range, otherwise they're ignored
+// and the normal saved-lookup behavior applies. Parsed once at module load.
+function readUrlLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const rawLat = params.get("lat")?.trim();
+  const rawLon = params.get("lon")?.trim();
+  if (!rawLat || !rawLon) return null;
+  const lat = Number(rawLat);
+  const lon = Number(rawLon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat: Number(lat.toFixed(4)), lon: Number(lon.toFixed(4)) };
+}
+const URL_LOCATION = readUrlLocation();
 
 export default function App() {
   const [zip, setZip] = useState("");
@@ -328,7 +350,7 @@ export default function App() {
 
     if (!navigator.geolocation) {
       setStatusMessage("");
-      setError("This browser does not support geolocation. Try entering a ZIP code.");
+      setError(`This browser does not support geolocation. ${ZIP_FALLBACK_HINT}`);
       return;
     }
 
@@ -353,17 +375,9 @@ export default function App() {
       if (mySeq !== requestSeqRef.current) return; // superseded by a newer lookup
       setLoading(false);
       setStatusMessage("");
-
-      if (geoError?.code === geoError?.PERMISSION_DENIED) {
-        setError(
-          "Location access is turned off for this site. On iPhone: tap the \"Aa\" icon in the address bar, " +
-            "Website Settings, and set Location to Ask or Allow, then try again — or just enter a ZIP code below."
-        );
-        return;
-      }
-
-      const message = geoError?.message || "Unable to read browser location.";
-      setError(`${message} Try entering a ZIP code instead.`);
+      // Plain-language text per error code, never the browser's own message
+      // (e.g. Chrome's bare "Timeout expired").
+      setError(geolocationErrorMessage(geoError));
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -383,13 +397,13 @@ export default function App() {
         setStatusMessage("Still locating you... trying a more precise lookup.");
         navigator.geolocation.getCurrentPosition(onSuccess, onFinalError, {
           enableHighAccuracy: true,
-          timeout: 30000,
+          timeout: GEOLOCATION_PRECISE_TIMEOUT_MS,
           maximumAge: 0,
         });
       },
       {
         enableHighAccuracy: false,
-        timeout: 15000,
+        timeout: GEOLOCATION_FAST_TIMEOUT_MS,
         maximumAge: 600000,
       }
     );
@@ -519,6 +533,15 @@ export default function App() {
       setZip(savedZip);
     }
 
+    // A location in the URL wins over the remembered method. It's a
+    // one-off link, so it's deliberately not saved as the last source/ZIP.
+    if (URL_LOCATION) {
+      setSource("url");
+      requestSeqRef.current++;
+      runLookupFromCoordinates(URL_LOCATION.lat, URL_LOCATION.lon, "url");
+      return;
+    }
+
     const savedSource = safeGetItem("frtcon_last_source");
     if (savedSource === "browser") {
       // A permission denial won't have changed on its own since the last
@@ -645,6 +668,11 @@ export default function App() {
               <button className="btn-secondary" type="submit" disabled={loading}>
                 {loading && source === "zip" ? "Looking up..." : "Search ZIP"}
               </button>
+              {source === "url" && URL_LOCATION ? (
+                <span className="custom-location-note">
+                  Using Lat: {URL_LOCATION.lat} Lon: {URL_LOCATION.lon}
+                </span>
+              ) : null}
             </form>
           </div>
 
