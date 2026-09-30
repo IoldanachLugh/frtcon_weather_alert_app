@@ -361,7 +361,8 @@ div[role="dialog"] {
 .frtcon-status-row > .frtcon-badge,
 .frtcon-status-row > .alert-tag,
 .frtcon-status-row > .share-fb-button,
-.frtcon-status-row > .soupcon-crosslink-pill {
+.frtcon-status-row > .soupcon-crosslink-pill,
+.frtcon-status-row > .french-toast-pill {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -391,6 +392,22 @@ div[role="dialog"] {
 
 .frtcon-status-row > .share-fb-button {
   border-radius: 999px;
+}
+
+/* "Lets make French Toast!" at FRTCON 1-2, opens the recipe. Cream with an
+   amber border, like the condition-status box, rather than soupcon's solid
+   amber pill, which would sit right beside the orange FRTCON 2 badge and
+   read as a second badge. Text is 12.7:1 on it. */
+.frtcon-status-row > .french-toast-pill {
+  background: #fff7e6;
+  color: #3f2b00;
+  border: 2px solid #f59e0b;
+  border-radius: 999px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 /* "Rain alert, check your SOUPCON!" -- links to soupcon.org. Violet for

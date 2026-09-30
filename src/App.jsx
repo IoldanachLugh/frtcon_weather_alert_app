@@ -743,6 +743,16 @@ export default function App() {
                   <span className="share-fb-label">Share</span>
                 </button>
 
+                {/* At FRTCON 1-2 (stay home), a nudge to the recipe -- the
+                    same pill soupcon.org shows for its soup of the day.
+                    Focus returns here when the recipe closes
+                    (useModalBehavior restores the opener). */}
+                {frtcon.level <= 2 ? (
+                  <button type="button" className="french-toast-pill" onClick={() => setRecipeOpen(true)}>
+                    Lets make French Toast!
+                  </button>
+                ) : null}
+
                 {/* Cross-link to soupcon.org, the rain-focused sibling app,
                     when a flood-family alert is active -- the mirror of its
                     own "check your FRTCON" link on snow. Not part of the

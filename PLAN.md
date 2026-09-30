@@ -1060,6 +1060,33 @@ started; both are listed under "Ideas for later" in README.md.
   instead. That would show the link on most rainy days rather than for
   significant rain.
 
+### 23. "Lets make French Toast!" pill at FRTCON 1-2 — ✅ FIXED
+
+- **Ask (per owner, 2026-09-30):** like soupcon's "Lets make {soup}!"
+  pill, show "Lets make French Toast!" when the level is FRTCON 1 or 2.
+- **Done:**
+  - `App.jsx`: when `frtcon.level <= 2`, a button in the status row (after
+    Share, before the SOUPCON link) opens the recipe modal. Focus returns
+    to the pill on close, since `useModalBehavior` restores the element
+    that opened the modal. That's better than soupcon, which always sends
+    focus back to the menu button.
+  - `styles.css`: `.french-toast-pill` is cream `#fff7e6` with a 2 px
+    amber `#f59e0b` border and `#3f2b00` text (12.7:1), matching the
+    condition box. It joins the status row's shared height/font rule.
+    Soupcon's solid amber was not used because it read as a second badge
+    beside the orange `#f97316` FRTCON 2 badge.
+- **Verified in headless Chrome** (`vite preview`, alerts injected by
+  request interception, since no real location is at 1-2 in September):
+  - A Blizzard Warning (FRTCON 1, 390 px) and a Winter Storm Warning
+    (FRTCON 2, 900 px) both showed the pill, 40 px tall like its
+    neighbors. At 390 px it wraps to its own line with no overflow.
+  - Enter on the pill opened "Jeff's French Toast Recipe" with focus
+    inside; Escape closed it and focus returned to the pill.
+  - A Winter Weather Advisory (FRTCON 3) and no alerts (FRTCON 5) showed
+    no pill.
+  - Screenshots checked. Lint and build pass; no unit test (JSX condition
+    only).
+
 ## Checked, no change needed
 
 - Request race handling (AbortController plus the geolocation sequence

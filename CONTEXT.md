@@ -198,6 +198,15 @@ part of this app.
   text for snow (the classifier deliberately avoids free-text matching).
   Known effect: the 48-hour total counts a period already under way in
   full, so the 4 can linger until that period ends.
+- **"Lets make French Toast!" pill** (PLAN.md #23): shown in the status
+  row at FRTCON 1-2 only, opens the recipe modal. The wording ("Lets", no
+  apostrophe) matches soupcon's "Lets make {soup}!" pill, per owner. Styled
+  cream with an amber border (the condition box's colors) rather than
+  soupcon's solid amber, which beside the orange FRTCON 2 badge read as a
+  second badge. Focus returns to the pill on close with no extra wiring:
+  useModalBehavior restores whatever element had focus when the modal
+  opened, and only falls back to the menu button if that element is gone
+  (e.g. the level dropped below 2 while the recipe was open).
 - **SOUPCON cross-link** (PLAN.md #22): `isRainAlert` in `frtcon.js`
   (flood family: Flood / Flash Flood Watch, Warning, Advisory, Statement,
   checked against api.weather.gov/alerts/types; Coastal and Lakeshore

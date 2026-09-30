@@ -48,6 +48,9 @@ Live at [frtcon.com](https://frtcon.com).
   share dialog in a new tab, so the user pastes the text into their post.
   Facebook's `sharer.php` only accepts a URL (no custom text), which is why
   the text goes via clipboard; the link card comes from the `u` param.
+- At FRTCON 1 or 2, shows a "Lets make French Toast!" pill next to the
+  Share button that opens the recipe (the counterpart of soupcon.org's
+  "Lets make {soup}!" soup-of-the-day pill).
 - Shows a violet "Rain alert, check your SOUPCON!" link next to the Share
   button whenever a Flood or Flash Flood alert is active -- a cross-link to
   [soupcon.org](https://soupcon.org), the rain-focused sibling app forked
