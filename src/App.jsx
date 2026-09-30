@@ -16,7 +16,7 @@ import {
   GEOLOCATION_FAST_TIMEOUT_MS,
   GEOLOCATION_PRECISE_TIMEOUT_MS,
 } from "./lib/geolocationError";
-import { determineFrtcon, pickRandomItems } from "./lib/frtcon";
+import { determineFrtcon, pickRandomItems, isRainAlert } from "./lib/frtcon";
 import { buildOutlook, formatIce, formatSnow } from "./lib/winterOutlook";
 import { alertMessages } from "./data/alertMessages";
 import { SnowOverlay } from "./components/SnowOverlay";
@@ -742,6 +742,21 @@ export default function App() {
                   </svg>
                   <span className="share-fb-label">Share</span>
                 </button>
+
+                {/* Cross-link to soupcon.org, the rain-focused sibling app,
+                    when a flood-family alert is active -- the mirror of its
+                    own "check your FRTCON" link on snow. Not part of the
+                    score. */}
+                {result.alerts.some(isRainAlert) ? (
+                  <a
+                    href="https://soupcon.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="soupcon-crosslink-pill"
+                  >
+                    Rain alert, check your SOUPCON!
+                  </a>
+                ) : null}
               </div>
 
               {shareToast ? (

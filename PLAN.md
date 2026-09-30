@@ -1026,6 +1026,40 @@ started; both are listed under "Ideas for later" in README.md.
 - **Not verified:** the refresh path in a browser (it reuses the tested
   lookup pieces); ice-only triggering against live data.
 
+### 22. "Check your SOUPCON" link on rain alerts — ✅ FIXED
+
+- **Ask (per owner, 2026-09-30):** the mirror of soupcon.org's "Snow
+  soon, check your FRTCON!" link. Show a link to SOUPCON when a rain alert
+  (e.g. a Flood Watch) is active.
+- **Done:**
+  - `isRainAlert(alert)` in `src/lib/frtcon.js` matches events containing
+    "flood", except Coastal Flood and Lakeshore Flood (tide/surge/wind
+    driven). Checked against api.weather.gov/alerts/types, that covers
+    Flood and Flash Flood Watch/Warning/Advisory/Statement. Not included:
+    Severe Thunderstorm, tropical and Hydrologic Outlook alerts, which are
+    about wind/hail/storms or are outlooks rather than rain events.
+  - `App.jsx`: when any active alert matches, a "Rain alert, check your
+    SOUPCON!" link (`https://soupcon.org`, new tab, `noopener noreferrer`)
+    appears after the Share button.
+  - `styles.css`: `.soupcon-crosslink-pill`, a violet `#a78bfa` pill with
+    `#1a0f2e` text (6.7:1). It joins the status row's shared
+    height/font-size rule and wraps to its own line on a phone.
+  - Tests: 13 new in `frtcon.test.js` (all 7 flood-family events match;
+    Coastal/Lakeshore Flood, Severe Thunderstorm, Winter Storm and
+    Hydrologic Outlook don't; missing event). 96/96 pass; lint and build
+    pass.
+- **Verified in headless Chrome** against live alerts:
+  - A point inside an active Flood Warning (Jewell/Mitchell County, KS)
+    showed the link at 900 px, inline after Share, 40 px tall like the
+    others, with the correct href/target/rel.
+  - A point inside an active Flood Advisory (Oklahoma City area) at 390 px
+    showed the link wrapped onto its own line, with no overflow.
+  - Duluth (no alerts) showed no link.
+  - Screenshots checked.
+- **Considered, not done:** triggering on the outlook's rain forecast
+  instead. That would show the link on most rainy days rather than for
+  significant rain.
+
 ## Checked, no change needed
 
 - Request race handling (AbortController plus the geolocation sequence

@@ -184,3 +184,14 @@ export function pickRandomItems(items, count) {
   }
   return pool.slice(0, Math.min(count, pool.length));
 }
+
+// Rain-driven alerts, for the "check your SOUPCON" cross-link to the
+// rain-focused sibling app soupcon.org (not part of the FRTCON score).
+// The NWS flood family -- Flood and Flash Flood Watch/Warning/Advisory/
+// Statement (checked against api.weather.gov/alerts/types) -- is what
+// heavy rain produces. Coastal and Lakeshore Flood alerts are excluded:
+// tides, surge and wind drive those, not rainfall.
+export function isRainAlert(alert) {
+  const event = (alert?.properties?.event || "").toLowerCase();
+  return event.includes("flood") && !event.includes("coastal flood") && !event.includes("lakeshore flood");
+}

@@ -198,6 +198,15 @@ part of this app.
   text for snow (the classifier deliberately avoids free-text matching).
   Known effect: the 48-hour total counts a period already under way in
   full, so the 4 can linger until that period ends.
+- **SOUPCON cross-link** (PLAN.md #22): `isRainAlert` in `frtcon.js`
+  (flood family: Flood / Flash Flood Watch, Warning, Advisory, Statement,
+  checked against api.weather.gov/alerts/types; Coastal and Lakeshore
+  Flood excluded since tides/surge/wind drive them) shows "Rain alert,
+  check your SOUPCON!" in the status row, linking to soupcon.org in a new
+  tab. It mirrors soupcon's "Snow soon, check your FRTCON!" link. Keyed on
+  alerts, not the outlook's rain forecast, so it only appears for
+  significant rain rather than most rainy days. Violet (`#a78bfa`, dark
+  text 6.7:1) for SOUPCON's purple branding.
 - **Browser-geolocation lookup:** a low-accuracy try (15 s, accepts a fix
   up to 10 min old), then, for any failure except permission-denied, one
   high-accuracy retry (30 s). Timeouts are the constants in

@@ -48,6 +48,12 @@ Live at [frtcon.com](https://frtcon.com).
   share dialog in a new tab, so the user pastes the text into their post.
   Facebook's `sharer.php` only accepts a URL (no custom text), which is why
   the text goes via clipboard; the link card comes from the `u` param.
+- Shows a violet "Rain alert, check your SOUPCON!" link next to the Share
+  button whenever a Flood or Flash Flood alert is active -- a cross-link to
+  [soupcon.org](https://soupcon.org), the rain-focused sibling app forked
+  from this one (it links back here the same way on snow). Coastal and
+  Lakeshore Flood alerts don't count (tide/wind driven, not rain). Not part
+  of the FRTCON score.
 - Installable as a home-screen app on Android (via the in-app "Install App"
   menu item) and iOS (via a guided "Add to Home Screen" flow, since iOS has
   no programmatic install API).

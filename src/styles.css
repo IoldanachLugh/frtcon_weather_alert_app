@@ -360,7 +360,8 @@ div[role="dialog"] {
    spacing -- its margin-bottom otherwise pushes it ~4px off-center. */
 .frtcon-status-row > .frtcon-badge,
 .frtcon-status-row > .alert-tag,
-.frtcon-status-row > .share-fb-button {
+.frtcon-status-row > .share-fb-button,
+.frtcon-status-row > .soupcon-crosslink-pill {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -390,6 +391,21 @@ div[role="dialog"] {
 
 .frtcon-status-row > .share-fb-button {
   border-radius: 999px;
+}
+
+/* "Rain alert, check your SOUPCON!" -- links to soupcon.org. Violet for
+   SOUPCON's purple branding, so it doesn't read as another FRTCON control
+   or the blue Share button. Dark text is 6.7:1 on it. Can wrap to its own
+   line on a phone, like the rest of the status row. */
+.frtcon-status-row > .soupcon-crosslink-pill {
+  background: #a78bfa;
+  color: #1a0f2e;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 999px;
+  padding-left: 10px;
+  padding-right: 10px;
+  white-space: nowrap;
 }
 
 .frtcon-updated-at {

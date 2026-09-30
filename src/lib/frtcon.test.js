@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyAlert, determineFrtcon, pickRandomItems } from "./frtcon";
+import { classifyAlert, determineFrtcon, pickRandomItems, isRainAlert } from "./frtcon";
 
 function alert(event, description = "") {
   return { properties: { event, description } };
@@ -170,5 +170,34 @@ describe("determineFrtcon with a forecast", () => {
     expect(determineFrtcon([]).level).toBe(5);
     expect(determineFrtcon([], null).level).toBe(5);
     expect(determineFrtcon([], { snow: 0.5, ice: 0 }).level).toBe(5);
+  });
+});
+
+describe("isRainAlert", () => {
+  it.each([
+    "Flood Watch",
+    "Flood Warning",
+    "Flood Advisory",
+    "Flood Statement",
+    "Flash Flood Watch",
+    "Flash Flood Warning",
+    "Flash Flood Statement",
+  ])("%s counts", (event) => {
+    expect(isRainAlert(alert(event))).toBe(true);
+  });
+
+  it.each([
+    "Coastal Flood Warning",
+    "Lakeshore Flood Advisory",
+    "Severe Thunderstorm Warning",
+    "Winter Storm Warning",
+    "Hydrologic Outlook",
+  ])("%s doesn't", (event) => {
+    expect(isRainAlert(alert(event))).toBe(false);
+  });
+
+  it("handles a missing event", () => {
+    expect(isRainAlert({})).toBe(false);
+    expect(isRainAlert(null)).toBe(false);
   });
 });
