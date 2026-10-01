@@ -1,6 +1,7 @@
 {
   "name": "frtcon_weather_alert_app",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

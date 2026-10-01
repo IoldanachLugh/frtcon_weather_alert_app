@@ -102,7 +102,7 @@ export default function App() {
       // only resolves correctly when the app is served from the domain
       // root. import.meta.env.BASE_URL tracks whatever `base` vite.config.js
       // is set to, so this keeps working whether the build lands in
-      // public_html/dev (for review) or gets promoted to public_html itself.
+      // /dev/ (for review) or gets promoted to the site root.
       navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
         // Non-fatal: the app works fine without it, it just won't be
         // installable from Chrome's own in-app menu item in that case.

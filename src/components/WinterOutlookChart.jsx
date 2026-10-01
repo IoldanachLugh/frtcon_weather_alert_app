@@ -157,7 +157,7 @@ const PRECIP_SERIES = [
   { key: "rain", label: "Rain", stroke: AQUA, fill: AQUA_FILL },
   { key: "snow", label: "Snow", stroke: BLUE, fill: BLUE_FILL },
   // Covers freezing rain and freezing drizzle too; "Sleet" keeps the legend
-  // short (per owner). The readout still names the exact types.
+  // short. The readout still names the exact types.
   { key: "ice", label: "Sleet", stroke: ORANGE, fill: ORANGE_FILL },
   { key: "none", label: "Unspecified", stroke: GRAY, fill: GRAY_FILL },
 ];

@@ -1,24 +1,26 @@
-# Instructions for Claude
+# Working on this repo
 
-At the start of any session in this repo, before making changes, read:
+> Shared for portfolio & demonstration purposes. All rights reserved.
 
-1. **`README.md`** — what the app does, how it's built, project structure.
-2. **`CONTEXT.md`** — infrastructure, deployment, decisions made and why,
-   known gotchas, shelved work. Anything not obvious from the code alone
-   lives here. Read this before touching deployment, the service worker,
-   or anything infrastructure-related.
-3. **`PLAN.md`** — a running code-review findings/fix list, not a permanent
-   doc. Items marked `✅ FIXED` have a **Done:** note describing what
-   changed and how it was verified — read those before re-touching the
-   same area, so you don't redo work or reverse a deliberate decision
-   (e.g. the point-based alerts lookup, or the FRTCON 4 reclassification).
-   Unmarked items are still open and worth checking before assuming
-   something hasn't been considered.
+This project was built with Claude Code as a pair programmer. This file is
+what Claude Code reads automatically at the start of each session. The same
+advice applies to anyone else working on the code.
 
-## Keeping these in sync
+## Read these first
 
-When a change makes something in `README.md` or `CONTEXT.md` inaccurate,
-update it as part of that change, not as separate cleanup later. When
-fixing or deciding against something from `PLAN.md`, mark it and add a
-**Done:** note the same way the existing entries do (what changed, how it
-was verified, anything explicitly left out of scope).
+- **[README.md](README.md)** explains what the app does, how it's built, and
+  how the code is laid out.
+- **[CONTEXT.md](CONTEXT.md)** covers hosting, design decisions and the
+  reasons for them, and known gotchas. Read it before changing deployment,
+  the service worker, or anything else infrastructure-related.
+- **[PLAN.md](PLAN.md)** is the code review log. Each entry records what was
+  changed and how it was verified. Check it before changing an area it
+  covers, so you don't undo a deliberate decision, like looking up alerts
+  by point or moving Frost Advisory to FRTCON 4.
+
+## Keeping the docs current
+
+- If a change makes something in the README or CONTEXT.md wrong, update the
+  doc in the same change.
+- When you fix something or decide against it, add an entry to PLAN.md
+  saying what changed, how it was verified, and anything left out of scope.
