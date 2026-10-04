@@ -733,6 +733,20 @@ div[role="dialog"] {
   font-size: 14px;
 }
 
+.contact-card {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.contact-card .body-text {
+  margin: 0;
+}
+
+.contact-card a {
+  color: #ffffff;
+  font-weight: bold;
+}
+
 /* ==========================================================================
    Modals (recipe modal + iOS install-help modal)
    ========================================================================== */

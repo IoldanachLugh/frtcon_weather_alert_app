@@ -354,6 +354,17 @@ level badge. **Verified** with injected Blizzard and Winter Storm Warnings,
 since nowhere was at FRTCON 1–2 in September. It appears at levels 1–2 and
 not at 3 or 5.
 
+### 24. Contact box at the bottom of the page ✅
+
+A card under the "48-hour winter outlook" toggle says "If you like the site,
+let me know! If you find a bug, tell me!" with a `mailto:` link to
+contact@frtcon.com. It's always shown, so before a lookup it sits under the
+lookup card. The link is bold white, because the browser's default link blue
+is hard to read on the dark card. **Verified** in headless Chrome against
+`vite preview` with a Duluth `?lat=&lon=` link, at desktop and phone widths:
+the box comes right after the results and the link points to the address.
+Lint, tests and the build pass.
+
 ---
 
 ## Checked, no change needed

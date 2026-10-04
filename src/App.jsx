@@ -829,6 +829,15 @@ export default function App() {
             </div>
           </div>
         ) : null}
+
+        {/* Always shown, so it sits at the bottom of the page whether or
+            not a lookup has run. */}
+        <div className="card contact-card">
+          <p className="body-text">
+            If you like the site, let me know! If you find a bug, tell me!{" "}
+            <a href="mailto:contact@frtcon.com">contact@frtcon.com</a>
+          </p>
+        </div>
       </div>
     </div>
 

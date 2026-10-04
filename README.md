@@ -57,6 +57,8 @@ There's more detail in the other docs:
   "Lets make French Toast!" button appears at FRTCON 1 or 2.
 - **A link to [SOUPCON](https://soupcon.org)** whenever a flood alert is
   active. SOUPCON is a rain-focused sibling app forked from this one.
+- **A contact box** at the bottom of the page with a `mailto:` link to
+  contact@frtcon.com, for feedback and bug reports.
 - **Installable** as a home-screen app on Android (via an Install button)
   and iOS (via guided "Add to Home Screen" steps).
 
