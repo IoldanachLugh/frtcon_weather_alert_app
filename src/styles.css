@@ -747,6 +747,57 @@ div[role="dialog"] {
   font-weight: bold;
 }
 
+/* Privacy note (PrivacyNote.jsx), a native <details> under the contact
+   card. The summary stays centered like the rest of the page; the body is
+   left-aligned because it's several paragraphs of prose. */
+.privacy-note {
+  margin-top: 20px;
+  padding: 0;
+}
+
+.privacy-summary {
+  display: block;
+  padding: 12px 16px;
+  border-radius: 18px;
+  color: #ffffff;
+  font-weight: bold;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* Hide the browser's own marker (WebKit/Safari) so only ours shows. */
+.privacy-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Same rotated-triangle indicator as the outlook toggle. */
+.privacy-summary::before {
+  content: "\25B6";
+  display: inline-block;
+  margin-right: 0.4em;
+  font-size: 0.6em;
+  vertical-align: middle;
+}
+
+.privacy-note[open] > .privacy-summary::before {
+  transform: rotate(90deg);
+}
+
+.privacy-summary:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -4px;
+}
+
+.privacy-body {
+  padding: 0 16px 16px;
+  color: #dbe7f5;
+  text-align: left;
+}
+
+.privacy-body p + p {
+  margin-top: 10px;
+}
+
 /* ==========================================================================
    Modals (recipe modal + iOS install-help modal)
    ========================================================================== */

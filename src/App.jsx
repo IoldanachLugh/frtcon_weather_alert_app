@@ -26,6 +26,7 @@ import { AlertCard } from "./components/AlertCard";
 import { WinterOutlookPanel } from "./components/WinterOutlookPanel";
 import { RecipeModal } from "./components/RecipeModal";
 import { IOSInstallHelp } from "./components/IOSInstallHelp";
+import { PrivacyNote } from "./components/PrivacyNote";
 
 // Optional `?lat=..&lon=..` URL parameters point the app at a specific
 // location. Both must be present and in range, otherwise they're ignored
@@ -838,6 +839,8 @@ export default function App() {
             <a href="mailto:contact@frtcon.com">contact@frtcon.com</a>
           </p>
         </div>
+
+        <PrivacyNote />
       </div>
     </div>
 

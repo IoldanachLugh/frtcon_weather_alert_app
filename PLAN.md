@@ -18,7 +18,7 @@ review time.
 - [Cleanup](#cleanup): 8–12
 - [Product changes](#product-changes): 13
 - [Backports from SOUPCON](#backports-from-soupcon): 14–18
-- [New features](#new-features): 19–23
+- [New features](#new-features): 19–25
 - [Checked, no change needed](#checked-no-change-needed)
 
 ---
@@ -364,6 +364,31 @@ is hard to read on the dark card. **Verified** in headless Chrome against
 `vite preview` with a Duluth `?lat=&lon=` link, at desktop and phone widths:
 the box comes right after the results and the link points to the address.
 Lint, tests and the build pass.
+
+### 25. Privacy note at the bottom of the page ✅
+
+`PrivacyNote.jsx` is a native `<details>`/`<summary>` labeled "Privacy",
+collapsed by default, rendered inside `.app-wrap` after the contact box, so
+it's the last thing on the page both before and after a lookup. No state
+and no new dependencies. It's deliberately not in the hamburger menu and
+not a modal. The summary is centered like the rest of the page, with the
+same rotated-triangle marker as the outlook toggle and a white focus ring;
+the body is left-aligned for readability.
+
+The text was written to match what the app actually does: no cookies,
+analytics, or ads; localStorage holds the last ZIP, last lookup method, and
+cached results; sessionStorage holds only the reconnect page's retry count;
+requests go to Zippopotam.us and api.weather.gov, through Cloudflare. **It
+is accurate only while that stays true.** If analytics, a contact form, or
+another third-party request is added, the text must be revisited.
+
+**Verified** in headless Chrome against `vite preview`, on the empty state
+at desktop width and with a Duluth `?lat=&lon=` link at desktop and phone
+(390px) widths: it starts closed, opens with Enter from the keyboard, shows
+the focus ring, the body is left-aligned, the text matches verbatim, there's
+no horizontal scroll, and it sits above the snow overlay (`.app-wrap` is
+z-index 1, the overlay 0 with no pointer events). Lint, tests and the build
+pass.
 
 ---
 

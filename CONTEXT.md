@@ -150,6 +150,13 @@ full, so a forecast-driven 4 can last until that period ends.
   except denied permission, it retries once at high accuracy (30 seconds).
   Error messages are written in plain language and never show the
   browser's own error text.
+- **Privacy note.** A collapsed `<details>` at the very bottom of the page,
+  under the contact box, not in the menu and not a modal. Its text is
+  accurate only while the app sets no cookies, has no analytics or ads, and
+  stores nothing beyond localStorage (last ZIP, last lookup method, cached
+  results) and sessionStorage (the reconnect page's retry count). If
+  analytics, a contact form, or any new third-party request is ever added,
+  the text in `PrivacyNote.jsx` must be revisited.
 
 ## Crawler and AI-agent support
 

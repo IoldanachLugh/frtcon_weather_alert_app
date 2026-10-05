@@ -59,6 +59,8 @@ There's more detail in the other docs:
   active. SOUPCON is a rain-focused sibling app forked from this one.
 - **A contact box** at the bottom of the page with a `mailto:` link to
   contact@frtcon.com, for feedback and bug reports.
+- **A short privacy note** under the contact box, collapsed by default,
+  saying what's stored in the browser and what's sent to other services.
 - **Installable** as a home-screen app on Android (via an Install button)
   and iOS (via guided "Add to Home Screen" steps).
 
@@ -119,7 +121,8 @@ src/
   components/
     FrtconBadge.jsx, FrtconMessage.jsx, AlertCard.jsx,
     WinterOutlookPanel.jsx, WinterOutlookChart.jsx (lazy-loaded),
-    RecipeModal.jsx, IOSInstallHelp.jsx, SnowOverlay.jsx
+    RecipeModal.jsx, IOSInstallHelp.jsx, SnowOverlay.jsx,
+    PrivacyNote.jsx
 public/
   manifest.json, sw.js, icons        PWA support
   robots.txt, sitemap.xml, index.md, .htaccess   crawler and agent support
