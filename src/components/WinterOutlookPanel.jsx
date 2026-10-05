@@ -74,7 +74,7 @@ export function WinterOutlookPanel({ outlook, error }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="outlook">
+    <div className="outlook nws-alert-card">
       <button
         type="button"
         className="outlook-toggle active-alerts-heading"
@@ -89,7 +89,7 @@ export function WinterOutlookPanel({ outlook, error }) {
       </button>
 
       {open ? (
-        <div className="nws-alert-card">
+        <div className="outlook-body">
           <p className="nws-alert-area-desc outlook-note">
             NWS forecast. Your FRTCON level comes from active alerts; this forecast only moves an all-clear FRTCON 5 up to 4, when{" "}
             {FORECAST_SNOW_MIN_IN} in or more of snow, or any ice, is forecast with no winter alert. Snow and ice are NWS&apos;s totals

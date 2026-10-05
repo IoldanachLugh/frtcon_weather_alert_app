@@ -623,13 +623,21 @@ div[role="dialog"] {
    48-hour winter outlook (WinterOutlookPanel / WinterOutlookChart)
    ========================================================================== */
 
+/* Its own top margin, since the "no active alerts" .card above it has no
+   bottom margin. 20px like .contact-card and .privacy-note; after alert
+   cards it collapses with their 14px bottom margin, so the gap stays 20px. */
+.outlook {
+  margin-top: 20px;
+}
+
 /* Collapsible heading, styled like "Active Alerts" (it also carries
-   .active-alerts-heading) but as a button. */
+   .active-alerts-heading) but as a button. It sits inside the card, so the
+   card's padding replaces its own margin and padding. */
 .outlook-toggle {
   display: block;
   width: 100%;
-  margin-top: 8px;
-  padding: 8px 0;
+  margin: 0;
+  padding: 0;
   text-align: center;
   border: 0;
   background: none;
@@ -648,6 +656,10 @@ div[role="dialog"] {
    most fonts draw noticeably smaller. */
 .outlook-toggle[aria-expanded="true"] .outlook-marker {
   transform: rotate(90deg);
+}
+
+.outlook-body {
+  margin-top: 12px;
 }
 
 .outlook-note {

@@ -392,6 +392,24 @@ pass.
 
 ---
 
+### 26. Winter outlook toggle inside its card ✅
+
+The "48-hour winter outlook" toggle used to sit on the page background,
+with the card appearing below it only when opened. Now the whole panel is
+one `.nws-alert-card`: the toggle is the card's heading, and the note,
+totals, chart and details appear inside the same card when it's opened
+(`.outlook-body`). The toggle's own margin and padding were dropped, since
+the card's padding takes their place. The panel gets its own 20px top
+margin (`.outlook`), matching the contact box and privacy note, because the
+"no active alerts" box above it is a plain `.card` with no bottom margin;
+after real alert cards their 14px bottom margin collapses into it, so the
+gap is still 20px. **Verified** in Chrome against
+`vite preview` with a Duluth `?lat=&lon=` link, closed and open: the closed
+card lines up with the "no active alerts" card above it, and the open card
+holds the chart. The gap above the panel measured 20px after the "no
+active alerts" box and after an injected alert card. Lint, tests and the
+build pass.
+
 ## Checked, no change needed
 
 - Handling of requests that overlap or race each other is sound.
